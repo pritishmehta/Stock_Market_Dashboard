@@ -1,0 +1,3 @@
+pip install yfinance, plotly, yahoo_fin, streamlit
+pip install matplotlib, mpl_finance, yahooquery, nltk
+pip install stocknews, pandas_datareader, ta
