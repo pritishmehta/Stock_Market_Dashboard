@@ -5,14 +5,9 @@ import plotly.graph_objects as go
 import plotly as px
 import pandas as pd
 from yahoo_fin.stock_info import get_day_gainers, get_day_losers
-import matplotlib.pyplot as plt
 from mpl_finance import candlestick_ohlc
-import matplotlib.dates as mdates
 import nltk
 from nltk.sentiment import SentimentIntensityAnalyzer
-from stocknews import StockNews
-from datetime import timedelta
-from yahooquery import Ticker as YQTicker
 import plotly.express as px
 import requests
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
@@ -688,7 +683,7 @@ with technical_analysis:
     def fetch_stock_data(ticker, start_date, end_date):
         stock = yf.Ticker(ticker)
         df = stock.history(start=start_date, end=end_date)
-        return df
+        return df, stock
 
     def calculate_moving_averages(df):
         df['MA20'] = df['Close'].rolling(window=20).mean()
@@ -735,22 +730,50 @@ with technical_analysis:
         fig.update_layout(height=900, title='Stock Technical Analysis')
         return fig
 
+    def get_fundamental_metrics(stock):
+        info = stock.info
+        metrics = {
+            'Price-to-Earnings Ratio': info.get('trailingPE', 'N/A'),
+            'Forward P/E': info.get('forwardPE', 'N/A'),
+            'Dividend Yield (%)': info.get('dividendYield', 'N/A'),
+            'Debt-to-Equity Ratio': info.get('debtToEquity', 'N/A'),
+            'Return on Equity (%)': info.get('returnOnEquity', 'N/A'),
+            'Price-to-Book Ratio': info.get('priceToBook', 'N/A'),
+            'Operating Margin (%)': info.get('operatingMargins', 'N/A'),
+            'Beta': info.get('beta', 'N/A')
+        }
+        
+        # Convert to percentage where applicable
+        for key in ['Dividend Yield (%)', 'Return on Equity (%)', 'Operating Margin (%)']:
+            if metrics[key] != 'N/A':
+                metrics[key] = f"{metrics[key]*100:.2f}%"
+        
+        return metrics
 
-    st.title('Stock Technical Analysis Dashboard')
+
+    st.title('Stock Analysis Dashboard')
 
     ticker = st.text_input('Enter Stock Ticker (e.g., AAPL)', value='AAPL')
     start_date = st.date_input('Start Date', pd.to_datetime('2023-01-01'))
     end_date = st.date_input('End Date', pd.to_datetime('2023-12-31'))
 
-    if st.button('Analyze', key='analyze_button'):  # Added a unique key here
-        df = fetch_stock_data(ticker, start_date, end_date)
+    if st.button('Analyze', key='analyze_button'):
+        df, stock = fetch_stock_data(ticker, start_date, end_date)
         df = calculate_moving_averages(df)
         df = calculate_rsi(df)
         df = calculate_macd(df)
 
+        # Technical Analysis Plot
         fig = plot_stock_data(df)
         st.plotly_chart(fig, use_container_width=True)
 
-        st.subheader('Recent Data')
+        # Fundamental Metrics
+        st.subheader('Fundamental Metrics')
+        metrics = get_fundamental_metrics(stock)
+        metrics_df = pd.DataFrame.from_dict(metrics, orient='index', columns=['Value'])
+        st.table(metrics_df)
+
+        # Recent Price Data
+        st.subheader('Recent Price Data')
         st.dataframe(df.tail())
     
