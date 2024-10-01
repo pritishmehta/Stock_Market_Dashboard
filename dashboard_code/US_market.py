@@ -280,7 +280,7 @@ with indexes:
 
 # In your main Streamlit app:
 with charts:
-    Gainers, Losers, News = st.tabs(["Gainers", "Losers", "News"])
+    Gainers, Losers = st.tabs(["Gainers", "Losers"])
     with Gainers:
         st.write('Gainers')
         gainers = pd.read_html('https://finance.yahoo.com/markets/stocks/gainers/')
@@ -414,8 +414,6 @@ with charts:
                                 st.write(f"No data available for {company_name} ({ticker})")
                         except Exception as e:
                             st.write(f"Error fetching data for {ticker}: {str(e)}")
-    with News:
-        st.write('Test')
             
 with sectors:
     st.header("Period")
