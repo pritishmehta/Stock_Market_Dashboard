@@ -33,9 +33,28 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 tables = pd.read_html('https://en.wikipedia.org/wiki/List_of_companies_listed_on_the_National_Stock_Exchange_of_India')
-
+print(tables)
 # Create an empty list to store the DataFrames
 dfs = []
+def fuzzy_merge(df1, df2, key1, key2, threshold=90, limit=1):
+    """
+    :param df1: the left table to join
+    :param df2: the right table to join
+    :param key1: key column of the left table
+    :param key2: key column of the right table
+    :param threshold: how close the matches should be to return a match, based on Levenshtein distance
+    :param limit: the amount of matches that will get returned, these are sorted high to low
+    :return: dataframe with boths keys and matches
+    """
+    s = df2[key2].tolist()
+
+    m = df1[key1].apply(lambda x: process.extract(x, s, limit=limit))
+    df1['matches'] = m
+
+    m2 = df1['matches'].apply(lambda x: ', '.join([i[0] for i in x if i[1] >= threshold]))
+    df1['matches'] = m2
+
+    return df1
 
 # Iterate through the tables
 for df in tables:
@@ -84,26 +103,6 @@ with charts:
         df = df.drop(columns=['LTP','Chg','Prev Close','High','Low','Volume'])
         df= df.head(10)
         df.rename(columns={'Name': 'Company name'}, inplace=True)
-        def fuzzy_merge(df1, df2, key1, key2, threshold=90, limit=1):
-            """
-            :param df1: the left table to join
-            :param df2: the right table to join
-            :param key1: key column of the left table
-            :param key2: key column of the right table
-            :param threshold: how close the matches should be to return a match, based on Levenshtein distance
-            :param limit: the amount of matches that will get returned, these are sorted high to low
-            :return: dataframe with boths keys and matches
-            """
-            s = df2[key2].tolist()
-
-            m = df1[key1].apply(lambda x: process.extract(x, s, limit=limit))
-            df1['matches'] = m
-
-            m2 = df1['matches'].apply(lambda x: ', '.join([i[0] for i in x if i[1] >= threshold]))
-            df1['matches'] = m2
-
-            return df1
-
         df1 = fuzzy_merge(df, merged_df, 'Company name', 'Company name', threshold=90)
         df1 = df1[df1['matches'] != '']
         merged_df_1 = pd.merge(df1, merged_df, left_on='matches', right_on='Company name')
@@ -128,25 +127,7 @@ with charts:
         df = df.drop(columns=['LTP','Chg','Prev Close','High','Low','Volume'])
         df= df.head(10)
         df.rename(columns={'Name': 'Company name'}, inplace=True)
-        def fuzzy_merge(df1, df2, key1, key2, threshold=90, limit=1):
-            """
-            :param df1: the left table to join
-            :param df2: the right table to join
-            :param key1: key column of the left table
-            :param key2: key column of the right table
-            :param threshold: how close the matches should be to return a match, based on Levenshtein distance
-            :param limit: the amount of matches that will get returned, these are sorted high to low
-            :return: dataframe with boths keys and matches
-            """
-            s = df2[key2].tolist()
 
-            m = df1[key1].apply(lambda x: process.extract(x, s, limit=limit))
-            df1['matches'] = m
-
-            m2 = df1['matches'].apply(lambda x: ', '.join([i[0] for i in x if i[1] >= threshold]))
-            df1['matches'] = m2
-
-            return df1
 
         df1 = fuzzy_merge(df, merged_df, 'Company name', 'Company name', threshold=90)
         df1 = df1[df1['matches'] != '']
@@ -166,3 +147,6 @@ with charts:
 
             fig.update_layout(title=f"Candlestick Chart for {ticker}")
             st.plotly_chart(fig)
+with sectors:
+    sectors_df = pd.read_html('https://www.tradingview.com/markets/stocks-india/sectorandindustry-sector/')
+    st.write(sectors_df)
