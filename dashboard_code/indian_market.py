@@ -252,3 +252,109 @@ with sectors:
     st.plotly_chart(fig_pie_sector_market_cap)
 with economic_indicators:
     st.write('Temp')
+    def fetch_india_gdp_data():
+        """Fetches India's GDP data from World Bank API"""
+        base_url = "http://api.worldbank.org/v2/country/IND/indicator/NY.GDP.MKTP.KD.ZG"
+        params = {
+            "format": "json",
+            "per_page": 100,
+            "date": "2000:2024"
+        }
+        
+        try:
+            response = requests.get(base_url, params=params)
+            response.raise_for_status()
+            data = response.json()[1]
+            
+            df = pd.DataFrame(data)
+            df['value'] = pd.to_numeric(df['value'])
+            df['date'] = pd.to_numeric(df['date'])
+            df = df[['date', 'value']].sort_values('date')
+            df.columns = ['Year', 'GDP Growth (%)']
+            return df
+        
+        except requests.exceptions.RequestException as e:
+            st.error(f"Error fetching data: {e}")
+            return None
+
+    def create_gdp_chart(df, chart_type='line'):
+        """Creates either a line or bar chart based on user selection"""
+        if chart_type == 'line':
+            fig = px.line(df, 
+                        x='Year', 
+                        y='GDP Growth (%)',
+                        title='India GDP Growth Rate (Annual %)')
+            fig.update_traces(mode='lines+markers')
+        else:
+            fig = px.bar(df,
+                        x='Year',
+                        y='GDP Growth (%)',
+                        title='India GDP Growth Rate (Annual %)')
+        
+        fig.update_layout(
+            template='plotly_white',
+            hovermode='x',
+            showlegend=False,
+            height=500
+        )
+        
+        # Add horizontal line at y=0
+        fig.add_hline(y=0, line_dash="dash", line_color="gray")
+        
+        return fig
+
+    def calculate_metrics(df):
+        """Calculates key metrics for the dashboard"""
+        latest_growth = df['GDP Growth (%)'].iloc[-1]
+        avg_5year = df['GDP Growth (%)'].tail(5).mean()
+        highest_growth = df['GDP Growth (%)'].max()
+        lowest_growth = df['GDP Growth (%)'].min()
+        
+        return latest_growth, avg_5year, highest_growth, lowest_growth
+    # Header
+    st.title("India GDP Growth Analysis")
+    st.markdown("Interactive dashboard showing India's GDP growth trends and analysis")
+    
+    # Fetch data
+    with st.spinner("Fetching latest GDP data..."):
+        df = fetch_india_gdp_data()
+    
+    if df is not None:
+        # Sidebar controls
+        st.sidebar.header("Visualization Controls")
+        chart_type = st.sidebar.selectbox(
+            "Select Chart Type",
+            options=['line', 'bar'],
+            format_func=lambda x: x.title() + " Chart"
+        )
+        
+        year_range = st.sidebar.slider(
+            "Select Year Range",
+            min_value=int(df['Year'].min()),
+            max_value=int(df['Year'].max()),
+            value=(int(df['Year'].min()), int(df['Year'].max()))
+        )
+        
+        # Filter data based on year range
+        filtered_df = df[(df['Year'] >= year_range[0]) & (df['Year'] <= year_range[1])]
+        
+        # Calculate metrics
+        latest_growth, avg_5year, highest_growth, lowest_growth = calculate_metrics(filtered_df)
+        
+        # Display metrics in columns
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Latest Growth Rate", f"{latest_growth:.1f}%")
+        with col2:
+            st.metric("5-Year Average", f"{avg_5year:.1f}%")
+        with col3:
+            st.metric("Highest Growth", f"{highest_growth:.1f}%")
+        with col4:
+            st.metric("Lowest Growth", f"{lowest_growth:.1f}%")
+        
+        # Display chart
+        st.plotly_chart(create_gdp_chart(filtered_df, chart_type), use_container_width=True)
+        
+    else:
+        st.error("Failed to fetch GDP data. Please try again later.")
