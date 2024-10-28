@@ -357,4 +357,4 @@ with economic_indicators:
         st.plotly_chart(create_gdp_chart(filtered_df, chart_type), use_container_width=True)
         
     else:
-        st.error("Failed to fetch GDP data. Please try again later.")
+        st.error("Failed to fetch GDP data. Please try again later.")g
