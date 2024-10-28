@@ -20,6 +20,7 @@ from plotly.subplots import make_subplots
 from ta.trend import MACD
 from ta.momentum import RSIIndicator
 from fuzzywuzzy import process
+import numpy as np
 # Custom CSS to expand the width
 st.markdown("""
 <style>
@@ -33,7 +34,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 tables = pd.read_html('https://en.wikipedia.org/wiki/List_of_companies_listed_on_the_National_Stock_Exchange_of_India')
-print(tables)
+
 # Create an empty list to store the DataFrames
 dfs = []
 def fuzzy_merge(df1, df2, key1, key2, threshold=90, limit=1):
@@ -71,7 +72,7 @@ for df in tables:
 merged_df = pd.concat(dfs, ignore_index=True)
 
 st.title('Indian Stock Market Dashboard')
-search,indexes, charts, sectors, heatmap, economic_indicators, technical_analysis = st.tabs(['Search',"Index", "Charts", "Sectors", "Heatmap", "Economic Indicators","Technical Analysis"])
+search,indexes, charts, sectors, economic_indicators, technical_analysis = st.tabs(['Search',"Index", "Charts", "Sectors", "Economic Indicators","Technical Analysis"])
 with search:
     st.write('Temp')
 with indexes:
@@ -148,5 +149,106 @@ with charts:
             fig.update_layout(title=f"Candlestick Chart for {ticker}")
             st.plotly_chart(fig)
 with sectors:
-    sectors_df = pd.read_html('https://www.tradingview.com/markets/stocks-india/sectorandindustry-sector/')
-    st.write(sectors_df)
+    nifty50_symbols = [
+    "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "HINDUNILVR.NS",
+    "ICICIBANK.NS", "HDFC.NS", "SBIN.NS", "BHARTIARTL.NS", "ITC.NS",
+    "KOTAKBANK.NS", "LT.NS", "ASIANPAINT.NS", "AXISBANK.NS", "HCLTECH.NS",
+    "MARUTI.NS", "BAJFINANCE.NS", "WIPRO.NS", "ULTRACEMCO.NS", "NESTLEIND.NS",
+    "TITAN.NS", "SUNPHARMA.NS", "BAJAJFINSV.NS", "TECHM.NS", "ONGC.NS",
+    "HDFCLIFE.NS", "NTPC.NS", "TATAMOTORS.NS", "POWERGRID.NS", "M&M.NS",
+    "CIPLA.NS", "ADANIPORTS.NS", "GRASIM.NS", "DIVISLAB.NS", "DRREDDY.NS",
+    "BRITANNIA.NS", "HINDALCO.NS", "INDUSINDBK.NS", "SBILIFE.NS", "UPL.NS",
+    "TATASTEEL.NS", "EICHERMOT.NS", "JSWSTEEL.NS", "COALINDIA.NS", "BPCL.NS",
+    "SHREECEM.NS", "IOC.NS", "HEROMOTOCO.NS", "BAJAJ-AUTO.NS", "TATACONSUM.NS"
+    ]
+
+    # Step 2: Fetch data for each stock
+    data = []
+    for symbol in nifty50_symbols:
+        try:
+            stock = yf.Ticker(symbol)
+            info = stock.info
+
+            # Fetch historical data for the last trading day
+            history = stock.history(period="1d")
+            
+            if not history.empty and 'Open' in history and 'Close' in history:
+                percent_change = ((history['Close'].iloc[-1] - history['Open'].iloc[0]) / history['Open'].iloc[0]) * 100
+            else:
+                percent_change = np.nan  # Assign NaN if no data
+
+            data.append({
+                'Symbol': symbol,
+                'Name': info.get('longName', ''),
+                'Sector': info.get('sector', 'Unknown'),
+                'Industry': info.get('industry', 'Unknown'),
+                'Market Cap': info.get('marketCap', 0),
+                'Percent Change': percent_change
+            })
+        except Exception as e:
+            st.write(f"Error fetching data for {symbol}: {e}")
+
+    df = pd.DataFrame(data)
+
+    # Step 3: Calculate industry-level percentage change
+    df['Weighted Change'] = df['Percent Change'] * df['Market Cap']
+    industry_changes = df.groupby('Industry').agg({
+        'Weighted Change': 'sum',
+        'Market Cap': 'sum'
+    }).reset_index()
+
+    # Calculate industry percent change
+    industry_changes['Industry Percent Change'] = np.where(
+        industry_changes['Market Cap'] != 0,
+        industry_changes['Weighted Change'] / industry_changes['Market Cap'],
+        0  # Assign 0 if market cap is 0
+    )
+
+    # Merge industry changes back to the main dataframe
+    df = df.merge(industry_changes[['Industry', 'Industry Percent Change']], on='Industry', how='left')
+
+    # Filter out rows with Market Cap of zero
+    df = df[df['Market Cap'] > 0]
+
+    # Step 4: Create treemap visualization
+    fig = px.treemap(df, 
+                    path=['Sector', 'Industry', 'Name'],
+                    values='Market Cap',
+                    color='Percent Change',
+                    color_continuous_scale=['red', 'gray', 'green'],
+                    range_color=[-5, 5],  # Adjust this range based on your data
+                    hover_data=['Symbol', 'Percent Change', 'Industry Percent Change'],
+                    title='Nifty 50 Stocks - Sectors and Industries')
+
+    # Show the plot
+    st.plotly_chart(fig)
+    # Step 5: Create pie chart visualization for market cap weightage
+    # Calculate total market cap for each industry
+    industry_market_cap = df.groupby('Industry')['Market Cap'].sum().reset_index()
+
+    # Calculate total market cap for each sector
+    sector_market_cap = df.groupby('Sector')['Market Cap'].sum().reset_index()
+
+    # Create pie chart for industry market cap weightage
+    fig_pie_industry_market_cap = px.pie(industry_market_cap,
+                                        names='Industry',  
+                                        values='Market Cap',  
+                                        hover_data=['Industry'],  
+                                        title='Nifty 50 Stocks - Industry Market Capitalization Weightage',
+                                        color='Market Cap'  
+                                        )  
+
+    # Create pie chart for sector market cap weightage
+    fig_pie_sector_market_cap = px.pie(sector_market_cap,
+                                        names='Sector',  
+                                        values='Market Cap',  
+                                        hover_data=['Sector'],  
+                                        title='Nifty 50 Stocks - Sector Market Capitalization Weightage',
+                                        color='Market Cap'  
+                                        )  
+
+    # Show the pie charts
+    st.plotly_chart(fig_pie_industry_market_cap)
+    st.plotly_chart(fig_pie_sector_market_cap)
+with economic_indicators:
+    st.write('Temp')

@@ -588,18 +588,18 @@ with heatmap:
         st.title('Stock Performance Treemap - NASDAQ 100')
         
         df = list_wikipedia_nasdaq100()
-        df['Change'] = df['Ticker'].apply(get_stock_data)
+        df['Change'] = df['Symbol'].apply(get_stock_data)
         df.dropna(subset=['Change'], inplace=True)
         df['Change'] = df['Change'].astype(float)
         df['Change'] = df['Change'].abs()
             
         fig = px.treemap(df, 
-                        path=['GICS Sector', 'GICS Sub-Industry', 'Ticker'], 
+                        path=['GICS Sector', 'GICS Sub-Industry', 'Symbol'],  # Changed 'Ticker' to 'Symbol'
                         values='Change', 
                         color='Change', 
                         color_continuous_scale='RdYlGn', 
                         title='Stock Performance by Sector and Sub-Industry - NASDAQ 100',
-                        hover_data=['Change','Company'])
+                        hover_data=['Change', 'Company'])
         
         st.plotly_chart(fig)
 
@@ -642,7 +642,7 @@ with heatmap:
 with economic_indicators:
     
 # Function to get data from Yahoo Finance
-    def get_yahoo_data(ticker):
+    def get_yahoo_data(tickers):
         data = yf.Ticker(ticker)
         return data.history(period="5y")
 
