@@ -15,11 +15,6 @@ indian_market = st.Page(
     title='Indian Market'
 )
 
-crypto = st.Page(
-    page='dashboard_code/crypto_market.py',
-    title='Crypto Market'
-)
-
-pg = st.navigation(pages=[us_market,indian_market,crypto])
+pg = st.navigation(pages=[us_market,indian_market])
 
 pg.run()
