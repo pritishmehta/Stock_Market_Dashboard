@@ -510,7 +510,6 @@ with charts:
         split_data = pd.DataFrame(split_data)
         losers = split_data[0].tolist()
         data = yf.download(losers,start_date_index,end_date_index)
-        print(data)
         num_columns = 3
         # Create rows of charts
         for i in range(0, len(losers), num_columns):
@@ -529,7 +528,6 @@ with charts:
                                 company_name = 'Gold' if ticker == 'GC=F' else 'Silver' if ticker == 'SI=F' else ticker
                             
                             data = yf.download(ticker, start=start_date_index, end=end_date_index)
-                            st.write(data.index)
                             if not data.empty:
                                 fig_losers = go.Figure(data=[go.Candlestick(
                                     x=data.index,
