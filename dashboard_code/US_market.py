@@ -79,7 +79,7 @@ with search:
         }
         
         today = datetime.date.today()
-        start_date = today - datetime.timedelta(days=5)  # Get last 5 trading days
+        start_date = today - datetime.timedelta(days=15)  # Get last 5 trading days
         
         indices_data = {}
         for symbol, name in indices.items():
@@ -87,6 +87,7 @@ with search:
             try:
                 # Download index data from Yahoo Finance
                 data = yf.download(symbol, start=start_date, end=today)
+                print(data)
                 if not data.empty:
                     latest_price = data['Close'].iloc[-1]
                     prev_price = data['Close'].iloc[-2]
@@ -265,8 +266,6 @@ with search:
     if indices_data:
         # Safely create columns if indices_data is not empty
         cols = st.columns(4)
-        print(f"Type of cols: {type(cols)}")
-        print(f"Contents of cols: {cols}")
         for i, (index_name, index_data) in enumerate(indices_data.items()):
             with cols[i]:
                 delta_color = "normal" if index_data['change'] == 0 else ("inverse" if index_data['change'] < 0 else "normal")
