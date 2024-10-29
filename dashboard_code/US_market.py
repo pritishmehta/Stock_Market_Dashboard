@@ -268,7 +268,7 @@ with search:
         cols = st.columns(4)
         for i, (index_name, index_data) in enumerate(indices_data.items()):
             with cols[i]:
-                delta_color = "normal" if index_data['change'] == 0 else ("inverse" if index_data['change'] < 0 else "normal")
+                delta_color = "normal" if (index_data['change'] == 0).any() else "other_color"
                 st.metric(
                     label=index_name,
                     value=f"${index_data['price']:,.2f}",
