@@ -393,17 +393,17 @@ with indexes:
                         
                         data = yf.download(ticker, start=start_date_index, end=end_date_index)
                         if not data.empty:
-                            fig_gainers = go.Figure()
+                            fig_indexes = go.Figure()
 
                             # Add candlestick trace
-                            fig_gainers.add_trace(go.Candlestick(x=data.index,
+                            fig_indexes.add_trace(go.Candlestick(x=data.index,
                                                         open=data['Open'],
                                                         high=data['High'],
                                                         low=data['Low'],
                                                         close=data['Close'],
                                                         name=f'{ticker} Candlestick'))
 
-                            fig_gainers.update_layout(
+                            fig_indexes.update_layout(
                                 title=f'{ticker} Price (Candlestick)',
                                 yaxis_title='Price ($)',  # Changed to USD
                                 xaxis_rangeslider_visible=True,
@@ -421,7 +421,7 @@ with indexes:
                                     type="date"
                                 )
                             )
-                            st.plotly_chart(fig_gainers, use_container_width=True)
+                            st.plotly_chart(fig_indexes, use_container_width=True)
                         else:
                             st.write(f"No data available for {company_name} ({ticker})")
                     except Exception as e:
@@ -463,14 +463,14 @@ with charts:
                             data = yf.download(ticker, start=start_date_index, end=end_date_index)
                             if not data.empty:
                                 # Create candlestick chart
-                                fig_losers = go.Figure(data=[go.Candlestick(x=data.index,
+                                fig_gainers = go.Figure(data=[go.Candlestick(x=data.index,
                                     open=data['Open'],
                                     high=data['High'],
                                     low=data['Low'],
                                     close=data['Close'],
                                     name=ticker)])
                                 
-                                fig_losers.update_layout(
+                                fig_gainers.update_layout(
                                     title=f'{company_name} ({ticker}) Price',
                                     yaxis_title='Price',
                                     xaxis_rangeslider_visible=True,  # This enables the rangeslider
@@ -491,7 +491,7 @@ with charts:
                                     )
                                 )
                                 
-                                st.plotly_chart(fig_losers, use_container_width=True)
+                                st.plotly_chart(fig_gainers, use_container_width=True)
                             else:
                                 st.write(f"No data available for {company_name} ({ticker})")
                         except Exception as e:
@@ -530,7 +530,7 @@ with charts:
                             data = yf.download(ticker, start=start_date_index, end=end_date_index)
                             st.write(data.index)
                             if not data.empty:
-                                fig = go.Figure(data=[go.Candlestick(
+                                fig_losers = go.Figure(data=[go.Candlestick(
                                     x=data.index,
                                     open=data['Open'],
                                     high=data['High'],
@@ -539,8 +539,8 @@ with charts:
                                     increasing_line_color='green',
                                     decreasing_line_color='red'
                                 )])
-                                fig.update_layout(xaxis_title='Date', yaxis_title='Price')
-                                st.plotly_chart(fig, key=f'candlestick_{company_name}')  # Unique key for each chart
+                                fig_losers.update_layout(xaxis_title='Date', yaxis_title='Price')
+                                st.plotly_chart(fig_losers, key=f'candlestick_{company_name}')  # Unique key for each chart
                             else:
                                 st.write(f"No data available for {company_name} ({ticker})")
                         except Exception as e:
