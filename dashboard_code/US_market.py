@@ -83,12 +83,13 @@ with search:
         
         indices_data = {}
         for symbol, name in indices.items():
+            print(symbol)
             try:
                 # Download index data from Yahoo Finance
                 data = yf.download(symbol, start=start_date, end=today)
                 if not data.empty:
-                    latest_price = data['Close'][-1]
-                    prev_price = data['Close'][-2]
+                    latest_price = data['Close'].iloc[-1]
+                    prev_price = data['Close'].iloc[-2]
                     pct_change = ((latest_price - prev_price) / prev_price) * 100
                     indices_data[name] = {
                         'price': latest_price,
@@ -260,10 +261,12 @@ with search:
     # Streamlit layout and market indices display
     st.subheader('Market Overview')
     indices_data = get_market_indices()
-
+    print(indices_data)
     if indices_data:
         # Safely create columns if indices_data is not empty
-        cols = st.columns(len(indices_data))
+        cols = st.columns(4)
+        print(f"Type of cols: {type(cols)}")
+        print(f"Contents of cols: {cols}")
         for i, (index_name, index_data) in enumerate(indices_data.items()):
             with cols[i]:
                 delta_color = "normal" if index_data['change'] == 0 else ("inverse" if index_data['change'] < 0 else "normal")
@@ -275,18 +278,6 @@ with search:
                 )
     else:
         st.warning("Market indices data is unavailable.")
-    # Create columns for market indices
-    cols = 3
-    for i, (index_name, index_data) in enumerate(indices_data.items()):
-        with cols[i]:
-            delta_color = "normal" if index_data['change'] == 0 else ("inverse" if index_data['change'] < 0 else "normal")
-            st.metric(
-                label=index_name,
-                value=f"${index_data['price']:,.2f}",
-                delta=f"{index_data['change']:+.2f}%",
-                delta_color=delta_color
-            )
-
     # Initialize session state for loading indicator
     if 'is_loading' not in st.session_state:
         st.session_state.is_loading = False
