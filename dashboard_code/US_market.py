@@ -69,7 +69,7 @@ with search:
             st.error(f"Error fetching stock data: {e}")
             return None
 
-    # Function to get market indices data
+    # Function to get market indices data with enhanced error handling and diagnostics
     def get_market_indices():
         indices = {
             '^GSPC': 'S&P 500',
@@ -84,6 +84,7 @@ with search:
         indices_data = {}
         for symbol, name in indices.items():
             try:
+                # Download index data from Yahoo Finance
                 data = yf.download(symbol, start=start_date, end=today)
                 if not data.empty:
                     latest_price = data['Close'][-1]
@@ -93,10 +94,13 @@ with search:
                         'price': latest_price,
                         'change': pct_change
                     }
+                else:
+                    st.error(f"No data retrieved for {name} (symbol: {symbol}). Check symbol or data availability.")
             except Exception as e:
                 st.error(f"Error fetching {name} data: {e}")
         
         return indices_data
+
 
     # Function to plot candlestick chart
     def plot_candlestick_chart(data, ticker):
@@ -253,11 +257,26 @@ with search:
     """)
 
     # Display market indices
+    # Streamlit layout and market indices display
     st.subheader('Market Overview')
     indices_data = get_market_indices()
 
+    if indices_data:
+        # Safely create columns if indices_data is not empty
+        cols = st.columns(len(indices_data))
+        for i, (index_name, index_data) in enumerate(indices_data.items()):
+            with cols[i]:
+                delta_color = "normal" if index_data['change'] == 0 else ("inverse" if index_data['change'] < 0 else "normal")
+                st.metric(
+                    label=index_name,
+                    value=f"${index_data['price']:,.2f}",
+                    delta=f"{index_data['change']:+.2f}%",
+                    delta_color=delta_color
+                )
+    else:
+        st.warning("Market indices data is unavailable.")
     # Create columns for market indices
-    cols = st.columns(len(indices_data))
+    cols = 3
     for i, (index_name, index_data) in enumerate(indices_data.items()):
         with cols[i]:
             delta_color = "normal" if index_data['change'] == 0 else ("inverse" if index_data['change'] < 0 else "normal")

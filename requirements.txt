@@ -9,3 +9,4 @@ nltk
 stocknews
 pandas_datareader
 ta
+fuzzywuzzy
