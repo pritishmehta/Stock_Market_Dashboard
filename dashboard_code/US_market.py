@@ -502,7 +502,7 @@ with charts:
         losers = pd.read_html('https://finance.yahoo.com/markets/stocks/losers/')
         df_1 = losers[0]
         # Drop the unwanted columns
-        df_1 = df_1.drop(columns=['Volume', 'Avg Vol (3M)', 'Market Cap', 'P/E Ratio (TTM)', '52 Wk Change %', '52 Wk Range'])
+        df_1 = df_1.drop(columns=['Volume', 'Avg Vol (3M)', 'Market Cap', 'P/E Ratio (TTM)', '52 Wk Change %', '52 Wk Range','Day Chart'])
         df_1 = df_1.head(10)
         st.write(df_1)
         losers = df_1['Symbol']
@@ -510,6 +510,7 @@ with charts:
         split_data = pd.DataFrame(split_data)
         losers = split_data[0].tolist()
         data = yf.download(losers,start_date_index,end_date_index)
+        print(data)
         num_columns = 3
         # Create rows of charts
         for i in range(0, len(losers), num_columns):
