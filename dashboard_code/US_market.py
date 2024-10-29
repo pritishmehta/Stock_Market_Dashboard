@@ -276,8 +276,12 @@ with search:
 
                 st.metric(
                     label=index_name,
-                    value=f"${index_data['price'].iloc[0]:,.2f}",
-                    delta=f"{index_data['change'].iloc[0]:+.2f}%",
+                    #for localhost
+                    value=f"${index_data['price']:,.2f}",
+                    delta=f"{index_data['change']:+.2f}%",
+                    #for deployment
+                    #value=f"${index_data['price'].iloc[0]:,.2f}",
+                    #delta=f"{index_data['change'].iloc[0]:+.2f}%",
                     delta_color=delta_color
                 )
     else:
@@ -374,59 +378,37 @@ with indexes:
     default_stocks = ['^NDX', '^GSPC', '^RUT', '^DJI', 'GC=F', 'SI=F']
 
     num_columns = 3
+    for i in default_stocks:
+        data = yf.download(i,start=start_date_index,end=end_date_index)
+        fig_indexes = go.Figure()
+        # Add candlestick trace
+        fig_indexes.add_trace(go.Candlestick(x=data.index,
+                                    open=data['Open'],
+                                    high=data['High'],
+                                    low=data['Low'],
+                                    close=data['Close'],
+                                    name=f'{i} Candlestick'))
 
-    # Create rows of charts
-    for i in range(0, len(default_stocks), num_columns):
-        cols = st.columns(num_columns)
-        for j in range(num_columns):
-            if i + j < len(default_stocks):
-                ticker = default_stocks[i + j]
-                with cols[j]:
-                    try:
-                        # Fetch ticker info
-                        ticker_info = yf.Ticker(ticker).info
-                        if 'longName' in ticker_info:
-                            company_name = ticker_info['longName']
-                        else:
-                            # Fallback names for gold and silver futures
-                            company_name = 'Gold' if ticker == 'GC=F' else 'Silver' if ticker == 'SI=F' else ticker
-                        
-                        data = yf.download(ticker, start=start_date_index, end=end_date_index)
-                        if not data.empty:
-                            fig_indexes = go.Figure()
-
-                            # Add candlestick trace
-                            fig_indexes.add_trace(go.Candlestick(x=data.index,
-                                                        open=data['Open'],
-                                                        high=data['High'],
-                                                        low=data['Low'],
-                                                        close=data['Close'],
-                                                        name=f'{ticker} Candlestick'))
-
-                            fig_indexes.update_layout(
-                                title=f'{ticker} Price (Candlestick)',
-                                yaxis_title='Price ($)',  # Changed to USD
-                                xaxis_rangeslider_visible=True,
-                                height=500,
-                                xaxis=dict(
-                                    rangeselector=dict(
-                                        buttons=list([
-                                            dict(count=1, label="1m", step="month", stepmode="backward"),
-                                            dict(count=6, label="6m", step="month", stepmode="backward"),
-                                            dict(count=1, label="1y", step="year", stepmode="backward"),
-                                            dict(count=1, label="YTD", step="year", stepmode="todate")
-                                        ])
-                                    ),
-                                    rangeslider=dict(visible=True),
-                                    type="date"
-                                )
-                            )
-                            st.plotly_chart(fig_indexes, use_container_width=True)
-                        else:
-                            st.write(f"No data available for {company_name} ({ticker})")
-                    except Exception as e:
-                        st.write(f"Error fetching data for {ticker}: {str(e)}")
-
+        fig_indexes.update_layout(
+            title=f'{i} Price (Candlestick)',
+            yaxis_title='Price ($)',  # Changed to USD
+            xaxis_rangeslider_visible=True,
+            height=500,
+            xaxis=dict(
+                rangeselector=dict(
+                    buttons=list([
+                        dict(count=1, label="1m", step="month", stepmode="backward"),
+                        dict(count=6, label="6m", step="month", stepmode="backward"),
+                        dict(count=1, label="1y", step="year", stepmode="backward"),
+                        dict(count=1, label="YTD", step="year", stepmode="todate")
+                    ])
+                ),
+                rangeslider=dict(visible=True),
+                type="date"
+            )
+        )
+        st.plotly_chart(fig_indexes, use_container_width=True)
+    
 # In your main Streamlit app:
 with charts:
     Gainers, Losers = st.tabs(["Gainers", "Losers"])
