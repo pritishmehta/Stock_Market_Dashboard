@@ -539,7 +539,7 @@ with charts:
                                     decreasing_line_color='red'
                                 )])
                                 fig.update_layout(xaxis_title='Date', yaxis_title='Price')
-                                st.plotly_chart(fig, key=f'candlestick_{sector}')  # Unique key for each chart
+                                st.plotly_chart(fig, key=f'candlestick_{ticker}')  # Unique key for each chart
                             else:
                                 st.write(f"No data available for {company_name} ({ticker})")
                         except Exception as e:
