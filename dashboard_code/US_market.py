@@ -528,6 +528,7 @@ with charts:
                                 company_name = 'Gold' if ticker == 'GC=F' else 'Silver' if ticker == 'SI=F' else ticker
                             
                             data = yf.download(ticker, start=start_date_index, end=end_date_index)
+                            st.write(data.index)
                             if not data.empty:
                                 fig = go.Figure(data=[go.Candlestick(
                                     x=data.index,
@@ -539,7 +540,7 @@ with charts:
                                     decreasing_line_color='red'
                                 )])
                                 fig.update_layout(xaxis_title='Date', yaxis_title='Price')
-                                st.plotly_chart(fig, key=f'candlestick_{ticker}')  # Unique key for each chart
+                                st.plotly_chart(fig, key=f'candlestick_{company_name}')  # Unique key for each chart
                             else:
                                 st.write(f"No data available for {company_name} ({ticker})")
                         except Exception as e:
