@@ -37,23 +37,66 @@ st.markdown("""
 st.title('US Market Dashboard')
 search,indexes, charts, sectors, heatmap, economic_indicators, technical_analysis = st.tabs(['Search',"Index", "Charts", "Sectors", "Heatmap", "Economic Indicators","Technical Analysis"])
 with search:
+    # Download VADER lexicon
     nltk.download('vader_lexicon', quiet=True)
 
-# Function to get YTD data
+    # Function to format ticker symbol for US stocks
+    def format_ticker(ticker):
+        # Remove any whitespace and convert to uppercase
+        ticker = ticker.strip().upper()
+        # Remove any existing market suffixes
+        ticker = ticker.split('.')[0]
+        return ticker
+
+    # Function to get YTD data for US stocks
     def get_ytd_data(ticker_symbol):
-        # Create a Ticker object
-        ticker = yf.Ticker(ticker_symbol)
+        try:
+            # Create a Ticker object with formatted ticker
+            formatted_ticker = format_ticker(ticker_symbol)
+            ticker = yf.Ticker(formatted_ticker)
+            
+            # Get the current date
+            current_date = datetime.date.today()
+            
+            # Create a datetime object for January 1st of the current year
+            start_of_year = datetime.datetime(current_date.year, 1, 1)
+            
+            # Fetch the YTD data
+            ytd_data = ticker.history(start=start_of_year, end=current_date)
+            
+            return ytd_data
+        except Exception as e:
+            st.error(f"Error fetching stock data: {e}")
+            return None
+
+    # Function to get market indices data
+    def get_market_indices():
+        indices = {
+            '^GSPC': 'S&P 500',
+            '^DJI': 'Dow Jones',
+            '^IXIC': 'NASDAQ',
+            '^RUT': 'Russell 2000'
+        }
         
-        # Get the current date
-        current_date = datetime.date.today()
+        today = datetime.date.today()
+        start_date = today - datetime.timedelta(days=5)  # Get last 5 trading days
         
-        # Create a datetime object for January 1st of the current year
-        start_of_year = datetime.datetime(current_date.year, 1, 1)
+        indices_data = {}
+        for symbol, name in indices.items():
+            try:
+                data = yf.download(symbol, start=start_date, end=today)
+                if not data.empty:
+                    latest_price = data['Close'][-1]
+                    prev_price = data['Close'][-2]
+                    pct_change = ((latest_price - prev_price) / prev_price) * 100
+                    indices_data[name] = {
+                        'price': latest_price,
+                        'change': pct_change
+                    }
+            except Exception as e:
+                st.error(f"Error fetching {name} data: {e}")
         
-        # Fetch the YTD data
-        ytd_data = ticker.history(start=start_of_year, end=current_date)
-        
-        return ytd_data
+        return indices_data
 
     # Function to plot candlestick chart
     def plot_candlestick_chart(data, ticker):
@@ -69,7 +112,7 @@ with search:
 
         fig.update_layout(
             title=f'{ticker} Price (Candlestick)',
-            yaxis_title='Price',
+            yaxis_title='Price ($)',  # Changed to USD
             xaxis_rangeslider_visible=True,
             height=500,
             xaxis=dict(
@@ -98,23 +141,38 @@ with search:
 
     # Function to get stock information using yfinance
     def get_stock_info(ticker):
-        stock_data = yf.Ticker(ticker)
-        return stock_data.info
+        try:
+            formatted_ticker = format_ticker(ticker)
+            stock_data = yf.Ticker(formatted_ticker)
+            return stock_data.info
+        except Exception as e:
+            st.error(f"Error fetching stock information: {e}")
+            return {}
 
-    # Function to get financial news and analyze sentiment
-    def get_news_sentiment(ticker):
-        news_url = f'https://newsapi.org/v2/everything?q={ticker}&language=en&apiKey=f958536b80ef4db0ab133be499c8bd21'  # Replace with your actual API key
+    # Function to get financial news and analyze sentiment for US stocks
+    def get_news_sentiment(ticker, stock_info):
+        search_ticker = format_ticker(ticker)
+        company_name = stock_info.get('longName', search_ticker)
+        search_query = f"{company_name} stock NYSE NASDAQ"
+        
+        news_url = f'https://newsapi.org/v2/everything?q={search_query}&language=en&apiKey=f958536b80ef4db0ab133be499c8bd21'
         
         try:
-            response = requests.get(news_url)
+            response = requests.get(news_url, timeout=5)
             news_data = response.json()
-
             articles = []
+            
             if 'articles' in news_data:
-                for article in news_data['articles'][:10]:  # Limit to 10 articles for better visualization
+                for article in news_data['articles'][:10]:
                     title = article.get('title', '')
                     description = article.get('description', '')
                     url = article.get('url', '')
+                    published_at = article.get('publishedAt', '')
+
+                    try:
+                        pub_date = datetime.datetime.strptime(published_at, '%Y-%m-%dT%H:%M:%SZ')
+                    except:
+                        pub_date = datetime.datetime.now()
 
                     title_sentiment = analyze_sentiment(title)
                     description_sentiment = analyze_sentiment(description)
@@ -124,95 +182,173 @@ with search:
                         'title_sentiment': title_sentiment,
                         'description': description,
                         'description_sentiment': description_sentiment,
-                        'url': url
+                        'url': url,
+                        'published_at': pub_date
                     })
 
-            return articles
+                articles.sort(key=lambda x: x['published_at'], reverse=True)
+                return articles
 
-        except requests.RequestException as e:
+        except Exception as e:
             st.error(f"Error fetching news data: {e}")
             return []
 
-    # Function to create a sentiment bar graph
+    # Function to create a sentiment graph
     def create_sentiment_graph(articles):
         title_sentiments = [article['title_sentiment'] for article in articles if article['title_sentiment'] is not None]
         description_sentiments = [article['description_sentiment'] for article in articles if article['description_sentiment'] is not None]
         
+        if not title_sentiments and not description_sentiments:
+            return None
+            
         fig = go.Figure()
         
-        fig.add_trace(go.Bar(
-            x=list(range(1, len(title_sentiments) + 1)),
-            y=title_sentiments,
-            name='Title Sentiment',
-            marker_color='blue'
-        ))
+        if title_sentiments:
+            fig.add_trace(go.Bar(
+                x=list(range(1, len(title_sentiments) + 1)),
+                y=title_sentiments,
+                name='Title Sentiment',
+                marker_color='blue'
+            ))
         
-        fig.add_trace(go.Bar(
-            x=list(range(1, len(description_sentiments) + 1)),
-            y=description_sentiments,
-            name='Description Sentiment',
-            marker_color='red'
-        ))
+        if description_sentiments:
+            fig.add_trace(go.Bar(
+                x=list(range(1, len(description_sentiments) + 1)),
+                y=description_sentiments,
+                name='Description Sentiment',
+                marker_color='red'
+            ))
         
         fig.update_layout(
-            title='Sentiment Analysis of News Articles',
+            title='News Sentiment Analysis',
             xaxis_title='Article Number',
             yaxis_title='Sentiment Score',
             yaxis=dict(range=[-1, 1]),
             barmode='group',
             height=600,
-            width=500,  # Set a fixed width for the graph
+            width=500,
             showlegend=True,
-            margin=dict(l=0, r=0, t=30, b=0)  # Adjust margins to maximize space
+            margin=dict(l=0, r=0, t=30, b=0)
         )
         
         return fig
 
     # Helper function to format sentiment score
     def format_sentiment(sentiment):
-        return f"{sentiment:.2f}" if sentiment is not None else "N/A"
+        if sentiment is None:
+            return "N/A"
+        elif sentiment >= 0.05:
+            return f"🟢 Positive ({sentiment:.2f})"
+        elif sentiment <= -0.05:
+            return f"🔴 Negative ({sentiment:.2f})"
+        else:
+            return f"⚪ Neutral ({sentiment:.2f})"
 
     # Streamlit layout
+    st.title('US Stock Market Sentiment Analysis')
 
-    st.title('Stock Sentiment Analysis')
+    st.markdown("""
+    Enter a US stock symbol (e.g., AAPL, MSFT, GOOGL).
+    The app will analyze both the stock data and related news sentiment.
+    """)
 
-    ticker = st.text_input("Enter Ticker")
+    # Display market indices
+    st.subheader('Market Overview')
+    indices_data = get_market_indices()
+
+    # Create columns for market indices
+    cols = st.columns(len(indices_data))
+    for i, (index_name, index_data) in enumerate(indices_data.items()):
+        with cols[i]:
+            delta_color = "normal" if index_data['change'] == 0 else ("inverse" if index_data['change'] < 0 else "normal")
+            st.metric(
+                label=index_name,
+                value=f"${index_data['price']:,.2f}",
+                delta=f"{index_data['change']:+.2f}%",
+                delta_color=delta_color
+            )
+
+    # Initialize session state for loading indicator
+    if 'is_loading' not in st.session_state:
+        st.session_state.is_loading = False
+
+    ticker = st.text_input("Enter Stock Symbol").upper()
+
     if ticker:
-        data = get_ytd_data(ticker)
-        st.write(data.tail(5))  # Display last 5 days of data
-        fig = plot_candlestick_chart(data, ticker)
-        st.plotly_chart(fig, use_container_width=True)
-    st.header('News Analysis')
-    if st.button('Analyze'):
-        # Get stock information
-        stock_info = get_stock_info(ticker)
-        st.subheader('Stock Information')
-        st.write(f"Company Name: {stock_info.get('longName', 'N/A')}")
-        st.write(f"Current Price: ${stock_info.get('currentPrice', 'N/A')}")
-        st.write(f"52 Week High: ${stock_info.get('fiftyTwoWeekHigh', 'N/A')}")
-        st.write(f"52 Week Low: ${stock_info.get('fiftyTwoWeekLow', 'N/A')}")
-
-        # Get news sentiment
-        articles = get_news_sentiment(ticker)
-
-        # Create two columns with adjusted widths
-        col1, col2 = st.columns([0.6, 0.4])
-
-        with col1:
-            st.subheader('News Articles and Sentiment Analysis')
-            for i, article in enumerate(articles):
-                st.write(f"**Article {i+1}**")
-                st.write(f"**Title:** [{article['title']}]({article['url']})")
-                st.write(f"Title Sentiment: {format_sentiment(article['title_sentiment'])}")
-                st.write(f"Description: {article['description']}")
-                st.write(f"Description Sentiment: {format_sentiment(article['description_sentiment'])}")
-                st.write("---")
-
-        with col2:
-            st.subheader('Sentiment Graph')
-            sentiment_graph = create_sentiment_graph(articles)
-            st.plotly_chart(sentiment_graph, use_container_width=True)
-
+        st.session_state.is_loading = True
+        
+        formatted_ticker = format_ticker(ticker)
+        
+        # Create tabs for better organization
+        tab1, tab2 = st.tabs(["📈 Stock Information", "📰 News & Sentiment"])
+        
+        with tab1:
+            # Fetch and display stock data
+            data = get_ytd_data(formatted_ticker)
+            if data is not None and not data.empty:
+                # Display basic stock information
+                stock_info = get_stock_info(formatted_ticker)
+                
+                # Create columns for stock info
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.metric("Company Name", stock_info.get('longName', 'N/A'))
+                    st.metric("Exchange", stock_info.get('exchange', 'N/A'))
+                    
+                with col2:
+                    st.metric("Current Price", f"${stock_info.get('currentPrice', 0):,.2f}")
+                    st.metric("Market Cap", f"${stock_info.get('marketCap', 0)/1e9:,.2f}B")
+                    
+                with col3:
+                    st.metric("52 Week High", f"${stock_info.get('fiftyTwoWeekHigh', 0):,.2f}")
+                    st.metric("52 Week Low", f"${stock_info.get('fiftyTwoWeekLow', 0):,.2f}")
+                
+                # Display recent price data
+                st.subheader('Recent Price Data')
+                st.dataframe(data.tail(5))
+                
+                # Display candlestick chart
+                st.subheader('Price Chart')
+                fig = plot_candlestick_chart(data, formatted_ticker)
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.error("Unable to fetch stock data. Please check the ticker symbol.")
+        
+        with tab2:
+            with st.spinner('Fetching news and analyzing sentiment...'):
+                # Get news and sentiment
+                articles = get_news_sentiment(formatted_ticker, stock_info)
+                
+                if articles:
+                    # Create two columns for news and sentiment
+                    col1, col2 = st.columns([0.6, 0.4])
+                    
+                    with col1:
+                        st.subheader('Recent News Articles')
+                        for i, article in enumerate(articles):
+                            with st.expander(f"Article {i+1}: {article['title'][:100]}..."):
+                                st.write(f"**Title Sentiment:** {format_sentiment(article['title_sentiment'])}")
+                                st.write(f"**Description:** {article['description']}")
+                                st.write(f"**Description Sentiment:** {format_sentiment(article['description_sentiment'])}")
+                                st.write(f"**Published:** {article['published_at'].strftime('%Y-%m-%d %H:%M')}")
+                                st.write(f"**Read more:** [{article['url']}]({article['url']})")
+                    
+                    with col2:
+                        st.subheader('Sentiment Analysis')
+                        sentiment_graph = create_sentiment_graph(articles)
+                        if sentiment_graph:
+                            st.plotly_chart(sentiment_graph, use_container_width=True)
+                        
+                        # Calculate and display average sentiment
+                        title_sentiments = [a['title_sentiment'] for a in articles if a['title_sentiment'] is not None]
+                        if title_sentiments:
+                            avg_sentiment = sum(title_sentiments) / len(title_sentiments)
+                            st.metric("Overall Market Sentiment", format_sentiment(avg_sentiment))
+                else:
+                    st.warning("No recent news articles found for this stock.")
+        
+        st.session_state.is_loading = False
 with indexes:
     col1, col2 = st.columns(2)
     with col1:
