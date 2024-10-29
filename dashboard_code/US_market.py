@@ -529,36 +529,17 @@ with charts:
                             
                             data = yf.download(ticker, start=start_date_index, end=end_date_index)
                             if not data.empty:
-                                # Create candlestick chart
-                                fig = go.Figure(data=[go.Candlestick(x=data.index,
+                                fig = go.Figure(data=[go.Candlestick(
+                                    x=data.index,
                                     open=data['Open'],
                                     high=data['High'],
                                     low=data['Low'],
                                     close=data['Close'],
-                                    name=ticker)])
-                                
-                                fig.update_layout(
-                                    title=f'{company_name} ({ticker}) Price',
-                                    yaxis_title='Price',
-                                    xaxis_rangeslider_visible=True,  # This enables the rangeslider
-                                    height=500,  # Increased height to accommodate the rangeslider
-                                    width=None,
-                                    xaxis=dict(
-                                        rangeselector=dict(
-                                            buttons=list([
-                                                dict(count=1, label="1m", step="month", stepmode="backward"),
-                                                dict(count=6, label="6m", step="month", stepmode="backward"),
-                                                dict(count=1, label="YTD", step="year", stepmode="todate"),
-                                                dict(count=1, label="1y", step="year", stepmode="backward"),
-                                                dict(step="all")
-                                            ])
-                                        ),
-                                        rangeslider=dict(visible=True),
-                                        type="date"
-                                    )
-                                )
-                                
-                                st.plotly_chart(fig, use_container_width=True)
+                                    increasing_line_color='green',
+                                    decreasing_line_color='red'
+                                )])
+                                fig.update_layout(xaxis_title='Date', yaxis_title='Price')
+                                st.plotly_chart(fig, key=f'candlestick_{sector}')  # Unique key for each chart
                             else:
                                 st.write(f"No data available for {company_name} ({ticker})")
                         except Exception as e:
