@@ -392,6 +392,7 @@ with indexes:
                             company_name = 'Gold' if ticker == 'GC=F' else 'Silver' if ticker == 'SI=F' else ticker
                         
                         data = yf.download(ticker, start=start_date_index, end=end_date_index)
+                        st.write(data)
                         if not data.empty:
                             fig_gainers = go.Figure()
 
