@@ -83,11 +83,9 @@ with search:
         
         indices_data = {}
         for symbol, name in indices.items():
-            print(symbol)
             try:
                 # Download index data from Yahoo Finance
                 data = yf.download(symbol, start=start_date, end=today)
-                print(data)
                 if not data.empty:
                     latest_price = data['Close'].iloc[-1]
                     prev_price = data['Close'].iloc[-2]
@@ -271,8 +269,8 @@ with search:
                 delta_color = "normal" if (index_data['change'] == 0).any() else "other_color"
                 st.metric(
                     label=index_name,
-                    value=f"${index_data['price']:,.2f}",
-                    delta=f"{index_data['change']:+.2f}%",
+                    value=f"${index_data['price'].iloc[0]:,.2f}",
+                    delta=f"{index_data['change'].iloc[0]:+.2f}%",
                     delta_color=delta_color
                 )
     else:
