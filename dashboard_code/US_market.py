@@ -277,11 +277,11 @@ with search:
                 st.metric(
                     label=index_name,
                     #for localhost
-                    value=f"${index_data['price']:,.2f}",
-                    delta=f"{index_data['change']:+.2f}%",
+                    #value=f"${index_data['price']:,.2f}",
+                    #delta=f"{index_data['change']:+.2f}%",
                     #for deployment
-                    #value=f"${index_data['price'].iloc[0]:,.2f}",
-                    #delta=f"{index_data['change'].iloc[0]:+.2f}%",
+                    value=f"${index_data['price'].iloc[0]:,.2f}",
+                    delta=f"{index_data['change'].iloc[0]:+.2f}%",
                     delta_color=delta_color
                 )
     else:
