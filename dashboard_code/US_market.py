@@ -376,8 +376,6 @@ with indexes:
 
     # Define default stocks
     default_stocks = ['^NDX', '^GSPC', '^RUT', '^DJI', 'GC=F', 'SI=F']
-
-    num_columns = 3
     for i in default_stocks:
         data = yf.download(i,start=start_date_index,end=end_date_index)
         fig_indexes = go.Figure()
