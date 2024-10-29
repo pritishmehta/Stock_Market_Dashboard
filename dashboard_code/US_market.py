@@ -396,7 +396,7 @@ with indexes:
                             fig_gainers = go.Figure()
 
                             # Add candlestick trace
-                            fig.add_trace(go.Candlestick(x=data.index,
+                            fig_gainers.add_trace(go.Candlestick(x=data.index,
                                                         open=data['Open'],
                                                         high=data['High'],
                                                         low=data['Low'],
