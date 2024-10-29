@@ -268,16 +268,16 @@ with search:
             with cols[i]:
                 # Determine delta color based on the change value
                 if (index_data['change'] == 0).any():
-                    delta_color = "off"  # No change
+                    delta_color = "off"  # No change 
                 elif (index_data['change'] > 0).any():
-                    delta_color = "normal"  # Positive change
+                    delta_color = "normal"  # Positive change 
                 else:
-                    delta_color = "inverse"  # Negative change
+                    delta_color = "inverse"  # Negative change 
 
                 st.metric(
                     label=index_name,
-                    value=f"${index_data['price'].iloc[0]:,.2f}",
-                    delta=f"{index_data['change'].iloc[0]:+.2f}%",
+                    value=f"${index_data['price']:.2f}",
+                    delta=f"{index_data['change']:.2f}%",
                     delta_color=delta_color
                 )
     else:
@@ -392,7 +392,6 @@ with indexes:
                             company_name = 'Gold' if ticker == 'GC=F' else 'Silver' if ticker == 'SI=F' else ticker
                         
                         data = yf.download(ticker, start=start_date_index, end=end_date_index)
-                        st.write(data)
                         if not data.empty:
                             fig_gainers = go.Figure()
 
