@@ -74,7 +74,182 @@ merged_df = pd.concat(dfs, ignore_index=True)
 st.title('Indian Stock Market Dashboard')
 search,indexes, charts, sectors, economic_indicators, technical_analysis = st.tabs(['Search',"Index", "Charts", "Sectors", "Economic Indicators","Technical Analysis"])
 with search:
-    st.write('Temp')
+    nltk.download('vader_lexicon', quiet=True)
+
+# Function to get YTD data
+    def get_ytd_data(ticker_symbol):
+        # Create a Ticker object
+        ticker = yf.Ticker(ticker_symbol)
+        
+        # Get the current date
+        current_date = datetime.date.today()
+        
+        # Create a datetime object for January 1st of the current year
+        start_of_year = datetime.datetime(current_date.year, 1, 1)
+        
+        # Fetch the YTD data
+        ytd_data = ticker.history(start=start_of_year, end=current_date)
+        
+        return ytd_data
+
+    # Function to plot candlestick chart
+    def plot_candlestick_chart(data, ticker):
+        fig = go.Figure()
+
+        # Add candlestick trace
+        fig.add_trace(go.Candlestick(x=data.index,
+                                    open=data['Open'],
+                                    high=data['High'],
+                                    low=data['Low'],
+                                    close=data['Close'],
+                                    name=f'{ticker} Candlestick'))
+
+        fig.update_layout(
+            title=f'{ticker} Price (Candlestick)',
+            yaxis_title='Price',
+            xaxis_rangeslider_visible=True,
+            height=500,
+            xaxis=dict(
+                rangeselector=dict(
+                    buttons=list([
+                        dict(count=1, label="1m", step="month", stepmode="backward"),
+                        dict(count=6, label="6m", step="month", stepmode="backward"),
+                        dict(count=1, label="1y", step="year", stepmode="backward"),
+                        dict(count=1, label="YTD", step="year", stepmode="todate")
+                    ])
+                ),
+                rangeslider=dict(visible=True),
+                type="date"
+            )
+        )
+
+        return fig
+
+    # Function to analyze sentiment of a text
+    def analyze_sentiment(text):
+        if not text:
+            return None
+        sia = SentimentIntensityAnalyzer()
+        sentiment_score = sia.polarity_scores(text)['compound']
+        return sentiment_score
+
+    # Function to get stock information using yfinance
+    def get_stock_info(ticker):
+        stock_data = yf.Ticker(ticker)
+        return stock_data.info
+
+    # Function to get financial news and analyze sentiment
+    def get_news_sentiment(ticker):
+        #ticker = str.replace(".NS"," ")
+        news_url = f'https://newsapi.org/v2/everything?q={ticker}&language=en&apiKey=f958536b80ef4db0ab133be499c8bd21'  # Replace with your actual API key
+        
+        try:
+            response = requests.get(news_url)
+            news_data = response.json()
+
+            articles = []
+            if 'articles' in news_data:
+                for article in news_data['articles'][:10]:  # Limit to 10 articles for better visualization
+                    title = article.get('title', '')
+                    description = article.get('description', '')
+                    url = article.get('url', '')
+
+                    title_sentiment = analyze_sentiment(title)
+                    description_sentiment = analyze_sentiment(description)
+
+                    articles.append({
+                        'title': title,
+                        'title_sentiment': title_sentiment,
+                        'description': description,
+                        'description_sentiment': description_sentiment,
+                        'url': url
+                    })
+
+            return articles
+
+        except requests.RequestException as e:
+            st.error(f"Error fetching news data: {e}")
+            return []
+
+    # Function to create a sentiment bar graph
+    def create_sentiment_graph(articles):
+        title_sentiments = [article['title_sentiment'] for article in articles if article['title_sentiment'] is not None]
+        description_sentiments = [article['description_sentiment'] for article in articles if article['description_sentiment'] is not None]
+        
+        fig = go.Figure()
+        
+        fig.add_trace(go.Bar(
+            x=list(range(1, len(title_sentiments) + 1)),
+            y=title_sentiments,
+            name='Title Sentiment',
+            marker_color='blue'
+        ))
+        
+        fig.add_trace(go.Bar(
+            x=list(range(1, len(description_sentiments) + 1)),
+            y=description_sentiments,
+            name='Description Sentiment',
+            marker_color='red'
+        ))
+        
+        fig.update_layout(
+            title='Sentiment Analysis of News Articles',
+            xaxis_title='Article Number',
+            yaxis_title='Sentiment Score',
+            yaxis=dict(range=[-1, 1]),
+            barmode='group',
+            height=600,
+            width=500,  # Set a fixed width for the graph
+            showlegend=True,
+            margin=dict(l=0, r=0, t=30, b=0)  # Adjust margins to maximize space
+        )
+        
+        return fig
+
+    # Helper function to format sentiment score
+    def format_sentiment(sentiment):
+        return f"{sentiment:.2f}" if sentiment is not None else "N/A"
+
+    # Streamlit layout
+
+    st.title('Stock Sentiment Analysis')
+
+    ticker = st.text_input("Enter Ticker")
+    if ticker:
+        data = get_ytd_data(ticker)
+        st.write(data.tail(5))  # Display last 5 days of data
+        fig = plot_candlestick_chart(data, ticker)
+        st.plotly_chart(fig, use_container_width=True)
+    st.header('News Analysis')
+    if st.button('Analyze'):
+        # Get stock information
+        stock_info = get_stock_info(ticker)
+        st.subheader('Stock Information')
+        st.write(f"Company Name: {stock_info.get('longName', 'N/A')}")
+        st.write(f"Current Price: ${stock_info.get('currentPrice', 'N/A')}")
+        st.write(f"52 Week High: ${stock_info.get('fiftyTwoWeekHigh', 'N/A')}")
+        st.write(f"52 Week Low: ${stock_info.get('fiftyTwoWeekLow', 'N/A')}")
+
+        # Get news sentiment
+        articles = get_news_sentiment(ticker)
+
+        # Create two columns with adjusted widths
+        col1, col2 = st.columns([0.6, 0.4])
+
+        with col1:
+            st.subheader('News Articles and Sentiment Analysis')
+            for i, article in enumerate(articles):
+                st.write(f"**Article {i+1}**")
+                st.write(f"**Title:** [{article['title']}]({article['url']})")
+                st.write(f"Title Sentiment: {format_sentiment(article['title_sentiment'])}")
+                st.write(f"Description: {article['description']}")
+                st.write(f"Description Sentiment: {format_sentiment(article['description_sentiment'])}")
+                st.write("---")
+
+        with col2:
+            st.subheader('Sentiment Graph')
+            sentiment_graph = create_sentiment_graph(articles)
+            st.plotly_chart(sentiment_graph, use_container_width=True)
 with indexes:
     col1, col2 = st.columns(2)
     with col1:
@@ -372,120 +547,100 @@ with economic_indicators:
     else:
         st.error("Failed to fetch some data. Please try again later.")
 with technical_analysis:
-    st.title("Stock Technical Analysis Dashboard")
 
-    # User inputs
-    ticker = st.text_input("Enter Stock Ticker (e.g., AAPL)", value="AAPL")
-    start_date = st.date_input("Start Date", datetime(2022, 1, 1))
-    end_date = st.date_input("End Date", datetime.now())
+    def fetch_stock_data(ticker, start_date, end_date):
+        stock = yf.Ticker(ticker)
+        df = stock.history(start=start_date, end=end_date)
+        return df, stock
 
-    # Check if the start date is before the end date
-    if start_date > end_date:
-        st.error("Start date must be before end date.")
-    else:
-        # Fetch data
-        @st.cache_data
-        def load_data(ticker, start, end):
-            """Loads data from Yahoo Finance."""
-            data = yf.download(ticker, start=start, end=end)
-            data["Date"] = data.index
-            return data
+    def calculate_moving_averages(df):
+        df['MA20'] = df['Close'].rolling(window=20).mean()
+        df['MA50'] = df['Close'].rolling(window=50).mean()
+        df['MA200'] = df['Close'].rolling(window=200).mean()
+        return df
 
-        if ticker:
-            data = load_data(ticker, start_date, end_date)
+    def calculate_rsi(df, window=14):
+        rsi_indicator = RSIIndicator(df['Close'], window=window)
+        df['RSI'] = rsi_indicator.rsi()
+        return df
 
-            if not data.empty:
-                st.write(f"### {ticker} Stock Price and Volume")
-                
-                # Plot price chart with volume
-                fig = go.Figure()
+    def calculate_macd(df):
+        macd = MACD(df['Close'])
+        df['MACD'] = macd.macd()
+        df['MACD_Signal'] = macd.macd_signal()
+        df['MACD_Histogram'] = macd.macd_diff()
+        return df
 
-                # Candlestick chart for price data
-                fig.add_trace(go.Candlestick(
-                    x=data['Date'],
-                    open=data['Open'],
-                    high=data['High'],
-                    low=data['Low'],
-                    close=data['Close'],
-                    name='Candlestick'
-                ))
+    def plot_stock_data(df):
+        fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.05,
+                            row_heights=[0.5, 0.2, 0.3])
 
-                # Volume bar chart
-                fig.add_trace(go.Bar(
-                    x=data['Date'],
-                    y=data['Volume'],
-                    name='Volume',
-                    yaxis='y2',
-                    marker=dict(color='blue', opacity=0.5)
-                ))
+        # Candlestick chart
+        fig.add_trace(go.Candlestick(x=df.index, open=df['Open'], high=df['High'],
+                                    low=df['Low'], close=df['Close'], name='Candlestick'),
+                    row=1, col=1)
 
-                # Additional layout
-                fig.update_layout(
-                    title=f"{ticker} Price Chart with Volume",
-                    yaxis_title="Price",
-                    yaxis2=dict(title="Volume", overlaying="y", side="right"),
-                    xaxis_title="Date",
-                    template="plotly_white",
-                    height=600
-                )
-                st.plotly_chart(fig, use_container_width=True)
+        # Moving Averages
+        fig.add_trace(go.Scatter(x=df.index, y=df['MA20'], name='MA20', line=dict(color='blue')), row=1, col=1)
+        fig.add_trace(go.Scatter(x=df.index, y=df['MA50'], name='MA50', line=dict(color='orange')), row=1, col=1)
+        fig.add_trace(go.Scatter(x=df.index, y=df['MA200'], name='MA200', line=dict(color='red')), row=1, col=1)
 
-                # Technical Indicators
-                st.write("### Technical Analysis Indicators")
+        # RSI
+        fig.add_trace(go.Scatter(x=df.index, y=df['RSI'], name='RSI', line=dict(color='purple')), row=2, col=1)
+        fig.add_hline(y=70, line_dash="dash", line_color="red", row=2, col=1)
+        fig.add_hline(y=30, line_dash="dash", line_color="green", row=2, col=1)
 
-                # Moving Average
-                data['SMA_50'] = data['Close'].rolling(window=50).mean()
-                data['SMA_200'] = data['Close'].rolling(window=200).mean()
+        # MACD
+        fig.add_trace(go.Scatter(x=df.index, y=df['MACD'], name='MACD', line=dict(color='blue')), row=3, col=1)
+        fig.add_trace(go.Scatter(x=df.index, y=df['MACD_Signal'], name='Signal', line=dict(color='orange')), row=3, col=1)
+        fig.add_trace(go.Bar(x=df.index, y=df['MACD_Histogram'], name='Histogram'), row=3, col=1)
 
-                # RSI (Relative Strength Index)
-                rsi_indicator = RSIIndicator(close=data['Close'], window=14)
-                data['RSI'] = rsi_indicator.rsi()
+        fig.update_layout(height=900, title='Stock Technical Analysis')
+        return fig
 
-                # MACD (Moving Average Convergence Divergence)
-                macd_indicator = MACD(close=data['Close'])
-                data['MACD'] = macd_indicator.macd()
-                data['MACD_Signal'] = macd_indicator.macd_signal()
-                data['MACD_Hist'] = macd_indicator.macd_diff()
+    def get_fundamental_metrics(stock):
+        info = stock.info
+        metrics = {
+            'Price-to-Earnings Ratio': info.get('trailingPE', 'N/A'),
+            'Forward P/E': info.get('forwardPE', 'N/A'),
+            'Dividend Yield (%)': info.get('dividendYield', 'N/A'),
+            'Debt-to-Equity Ratio': info.get('debtToEquity', 'N/A'),
+            'Return on Equity (%)': info.get('returnOnEquity', 'N/A'),
+            'Price-to-Book Ratio': info.get('priceToBook', 'N/A'),
+            'Operating Margin (%)': info.get('operatingMargins', 'N/A'),
+            'Beta': info.get('beta', 'N/A')
+        }
+        
+        # Convert to percentage where applicable
+        for key in ['Dividend Yield (%)', 'Return on Equity (%)', 'Operating Margin (%)']:
+            if metrics[key] != 'N/A':
+                metrics[key] = f"{metrics[key]*100:.2f}%"
+        
+        return metrics
 
-                # Plot Moving Averages on Price Chart
-                fig.add_trace(go.Scatter(
-                    x=data['Date'], y=data['SMA_50'],
-                    mode='lines', name='SMA 50', line=dict(color='orange')
-                ))
-                fig.add_trace(go.Scatter(
-                    x=data['Date'], y=data['SMA_200'],
-                    mode='lines', name='SMA 200', line=dict(color='purple')
-                ))
 
-                # RSI Plot
-                fig_rsi = go.Figure()
-                fig_rsi.add_trace(go.Scatter(
-                    x=data['Date'], y=data['RSI'],
-                    mode='lines', name='RSI', line=dict(color='blue')
-                ))
-                fig_rsi.add_hline(y=70, line_dash="dash", line_color="red")  # Overbought line
-                fig_rsi.add_hline(y=30, line_dash="dash", line_color="green")  # Oversold line
-                fig_rsi.update_layout(title=f"{ticker} RSI (Relative Strength Index)", height=300)
-                st.plotly_chart(fig_rsi, use_container_width=True)
+    st.title('Stock Analysis Dashboard')
 
-                # MACD Plot
-                fig_macd = go.Figure()
-                fig_macd.add_trace(go.Scatter(
-                    x=data['Date'], y=data['MACD'],
-                    mode='lines', name='MACD', line=dict(color='blue')
-                ))
-                fig_macd.add_trace(go.Scatter(
-                    x=data['Date'], y=data['MACD_Signal'],
-                    mode='lines', name='Signal Line', line=dict(color='red')
-                ))
-                fig_macd.add_trace(go.Bar(
-                    x=data['Date'], y=data['MACD_Hist'],
-                    name='MACD Histogram', marker=dict(color='gray')
-                ))
-                fig_macd.update_layout(title=f"{ticker} MACD", height=300)
-                st.plotly_chart(fig_macd, use_container_width=True)
+    ticker = st.text_input('Enter Stock Ticker (e.g., AAPL)', value='AAPL')
+    start_date = st.date_input('Start Date', pd.to_datetime('2023-01-01'))
+    end_date = st.date_input('End Date', pd.to_datetime('2023-12-31'))
 
-            else:
-                st.error("No data found for the given ticker. Please check the ticker symbol and date range.")
-        else:
-            st.write("Enter a ticker symbol to view data.")
+    if st.button('Analyze', key='analyze_button'):
+        df, stock = fetch_stock_data(ticker, start_date, end_date)
+        df = calculate_moving_averages(df)
+        df = calculate_rsi(df)
+        df = calculate_macd(df)
+
+        # Technical Analysis Plot
+        fig = plot_stock_data(df)
+        st.plotly_chart(fig, use_container_width=True)
+
+        # Fundamental Metrics
+        st.subheader('Fundamental Metrics')
+        metrics = get_fundamental_metrics(stock)
+        metrics_df = pd.DataFrame.from_dict(metrics, orient='index', columns=['Value'])
+        st.table(metrics_df)
+
+        # Recent Price Data
+        st.subheader('Recent Price Data')
+        st.dataframe(df.tail())
