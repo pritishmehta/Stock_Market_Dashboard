@@ -294,7 +294,34 @@ with search:
     Enter the stock symbol (e.g., RELIANCE, TCS, INFY). 
     The app will automatically append .NS for NSE stocks.
     """)
+    st.subheader('Market Overview')
+    indices_data = get_market_indices()
+    print(indices_data)
+    if indices_data:
+        # Safely create columns if indices_data is not empty
+        cols = st.columns(4)
+        for i, (index_name, index_data) in enumerate(indices_data.items()):
+            with cols[i]:
+                # Determine delta color based on the change value
+                if (index_data['change'] == 0).any():
+                    delta_color = "off"  # No change 
+                elif (index_data['change'] > 0).any():
+                    delta_color = "normal"  # Positive change 
+                else:
+                    delta_color = "inverse"  # Negative change 
 
+                st.metric(
+                    label=index_name,
+                    #for localhost
+                    value=f"${index_data['price']:,.2f}",
+                    delta=f"{index_data['change']:+.2f}%",
+                    #for deployment
+                    #value=f"${index_data['price'].iloc[0]:,.2f}",
+                    #delta=f"{index_data['change'].iloc[0]:+.2f}%",
+                    delta_color=delta_color
+                )
+    else:
+        st.warning("Market indices data is unavailable.")
     # Initialize session state for loading indicator
     if 'is_loading' not in st.session_state:
         st.session_state.is_loading = False
