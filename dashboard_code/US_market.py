@@ -105,35 +105,83 @@ with search:
 
     # Function to plot candlestick chart
     def plot_candlestick_chart(data, ticker):
-        fig = go.Figure()
-
-        # Add candlestick trace
-        fig.add_trace(go.Candlestick(x=data.index,
-                                    open=data['Open'],
-                                    high=data['High'],
-                                    low=data['Low'],
-                                    close=data['Close'],
-                                    name=f'{ticker} Candlestick'))
-
+                # Create candlestick trace
+        fig = go.Figure(data=[go.Candlestick(x=data['Date'],
+                        open=data['Open'],
+                        high=data['High'],
+                        low=data['Low'],
+                        close=data['Close'],
+                        name='Candlestick')])
+        
+        # Add moving averages (initially visible)
+        fig.add_trace(go.Scatter(x=data['Date'], 
+                                 y=data['Close'].rolling(window=20).mean(), 
+                                 mode='lines', 
+                                 name='20-Day MA',
+                                 line=dict(color='blue'),
+                                 visible=True)) 
+        
+        fig.add_trace(go.Scatter(x=data['Date'], 
+                                 y=data['Close'].rolling(window=50).mean(), 
+                                 mode='lines', 
+                                 name='50-Day MA',
+                                 line=dict(color='red'),
+                                 visible=True)) 
+        
+        # Add volume bars (initially visible)
+        fig.add_trace(go.Bar(x=data['Date'], 
+                             y=data['Volume'], 
+                             name='Volume',
+                             marker_color='lightgray',
+                             yaxis='y2',
+                             visible=True)) 
+        
+        # Create dropdown menus for selection
         fig.update_layout(
-            title=f'{ticker} Price (Candlestick)',
-            yaxis_title='Price ($)',  # Changed to USD
-            xaxis_rangeslider_visible=True,
-            height=500,
-            xaxis=dict(
-                rangeselector=dict(
+            updatemenus=[
+                dict(
                     buttons=list([
-                        dict(count=1, label="1m", step="month", stepmode="backward"),
-                        dict(count=6, label="6m", step="month", stepmode="backward"),
-                        dict(count=1, label="1y", step="year", stepmode="backward"),
-                        dict(count=1, label="YTD", step="year", stepmode="todate")
-                    ])
+                        dict(
+                            args=[{'visible': [True, True, True, True]}],  # All visible
+                            label="All",
+                            method="update"
+                        ),
+                        dict(
+                            args=[{'visible': [True, False, False, True]}],  # Candlestick and Volume
+                            label="Candlestick & Volume",
+                            method="update"
+                        ),
+                        dict(
+                            args=[{'visible': [True, True, True, False]}],  # Candlestick and MAs
+                            label="Candlestick & MAs",
+                            method="update"
+                        ),
+                        dict(
+                            args=[{'visible': [True, False, False, False]}],  # Only Candlestick
+                            label="Candlestick Only",
+                            method="update"
+                        )
+                    ]),
+                    direction="down",
+                    pad={"r": 10, "t": 10},
+                    showactive=True,
+                    x=0.1,
+                    xanchor="left",
+                    y=1.1,
+                    yanchor="top"
                 ),
-                rangeslider=dict(visible=True),
-                type="date"
-            )
+            ]
         )
-
+        
+        # Rest of the layout
+        fig.update_layout(
+            title='Interactive Candlestick Chart',
+            yaxis_title='Price',
+            xaxis_title='Date',
+            xaxis_rangeslider_visible=True,
+            yaxis2=dict(title='Volume', overlaying='y', side='right'),
+            height=600
+        )
         return fig
 
     # Function to analyze sentiment of a text
@@ -384,6 +432,7 @@ with indexes:
         
         # Assuming 'data' has a MultiIndex, drop the second level of the MultiIndex
         data.columns = data.columns.droplevel(1)
+                # Create candlestick trace
         fig = go.Figure(data=[go.Candlestick(x=data['Date'],
                         open=data['Open'],
                         high=data['High'],
@@ -391,34 +440,74 @@ with indexes:
                         close=data['Close'],
                         name='Candlestick')])
         
-        # Add moving averages
+        # Add moving averages (initially visible)
         fig.add_trace(go.Scatter(x=data['Date'], 
                                  y=data['Close'].rolling(window=20).mean(), 
                                  mode='lines', 
                                  name='20-Day MA',
-                                 line=dict(color='blue')))  # 20-day moving average
+                                 line=dict(color='blue'),
+                                 visible=True)) 
         
         fig.add_trace(go.Scatter(x=data['Date'], 
                                  y=data['Close'].rolling(window=50).mean(), 
                                  mode='lines', 
                                  name='50-Day MA',
-                                 line=dict(color='red')))  # 50-day moving average
+                                 line=dict(color='red'),
+                                 visible=True)) 
         
-        # Add volume bars
+        # Add volume bars (initially visible)
         fig.add_trace(go.Bar(x=data['Date'], 
                              y=data['Volume'], 
                              name='Volume',
                              marker_color='lightgray',
-                             yaxis='y2')) 
+                             yaxis='y2',
+                             visible=True)) 
         
-        # Update layout for better visualization
+        # Create dropdown menus for selection
         fig.update_layout(
-            title='Detailed Candlestick Chart with Volume and Moving Averages',
+            updatemenus=[
+                dict(
+                    buttons=list([
+                        dict(
+                            args=[{'visible': [True, True, True, True]}],  # All visible
+                            label="All",
+                            method="update"
+                        ),
+                        dict(
+                            args=[{'visible': [True, False, False, True]}],  # Candlestick and Volume
+                            label="Candlestick & Volume",
+                            method="update"
+                        ),
+                        dict(
+                            args=[{'visible': [True, True, True, False]}],  # Candlestick and MAs
+                            label="Candlestick & MAs",
+                            method="update"
+                        ),
+                        dict(
+                            args=[{'visible': [True, False, False, False]}],  # Only Candlestick
+                            label="Candlestick Only",
+                            method="update"
+                        )
+                    ]),
+                    direction="down",
+                    pad={"r": 10, "t": 10},
+                    showactive=True,
+                    x=0.1,
+                    xanchor="left",
+                    y=1.1,
+                    yanchor="top"
+                ),
+            ]
+        )
+        
+        # Rest of the layout
+        fig.update_layout(
+            title='Interactive Candlestick Chart',
             yaxis_title='Price',
             xaxis_title='Date',
-            xaxis_rangeslider_visible=True,  # Add range slider
-            yaxis2=dict(title='Volume', overlaying='y', side='right'),  # Volume on secondary y-axis
-            height=600,  # Adjust height for better visibility
+            xaxis_rangeslider_visible=True,
+            yaxis2=dict(title='Volume', overlaying='y', side='right'),
+            height=600
         )
         st.plotly_chart(fig, use_container_width=True)
     
@@ -462,7 +551,7 @@ with charts:
                             # Assuming 'data' has a MultiIndex, drop the second level of the MultiIndex
                             data.columns = data.columns.droplevel(1)
                             if not data.empty:
-                                # Create candlestick chart
+                                        # Create candlestick trace
                                 fig = go.Figure(data=[go.Candlestick(x=data['Date'],
                                                 open=data['Open'],
                                                 high=data['High'],
@@ -470,34 +559,74 @@ with charts:
                                                 close=data['Close'],
                                                 name='Candlestick')])
                                 
-                                # Add moving averages
+                                # Add moving averages (initially visible)
                                 fig.add_trace(go.Scatter(x=data['Date'], 
                                                          y=data['Close'].rolling(window=20).mean(), 
                                                          mode='lines', 
                                                          name='20-Day MA',
-                                                         line=dict(color='blue')))  # 20-day moving average
+                                                         line=dict(color='blue'),
+                                                         visible=True)) 
                                 
                                 fig.add_trace(go.Scatter(x=data['Date'], 
                                                          y=data['Close'].rolling(window=50).mean(), 
                                                          mode='lines', 
                                                          name='50-Day MA',
-                                                         line=dict(color='red')))  # 50-day moving average
+                                                         line=dict(color='red'),
+                                                         visible=True)) 
                                 
-                                # Add volume bars
+                                # Add volume bars (initially visible)
                                 fig.add_trace(go.Bar(x=data['Date'], 
                                                      y=data['Volume'], 
                                                      name='Volume',
                                                      marker_color='lightgray',
-                                                     yaxis='y2')) 
+                                                     yaxis='y2',
+                                                     visible=True)) 
                                 
-                                # Update layout for better visualization
+                                # Create dropdown menus for selection
                                 fig.update_layout(
-                                    title='Detailed Candlestick Chart with Volume and Moving Averages',
+                                    updatemenus=[
+                                        dict(
+                                            buttons=list([
+                                                dict(
+                                                    args=[{'visible': [True, True, True, True]}],  # All visible
+                                                    label="All",
+                                                    method="update"
+                                                ),
+                                                dict(
+                                                    args=[{'visible': [True, False, False, True]}],  # Candlestick and Volume
+                                                    label="Candlestick & Volume",
+                                                    method="update"
+                                                ),
+                                                dict(
+                                                    args=[{'visible': [True, True, True, False]}],  # Candlestick and MAs
+                                                    label="Candlestick & MAs",
+                                                    method="update"
+                                                ),
+                                                dict(
+                                                    args=[{'visible': [True, False, False, False]}],  # Only Candlestick
+                                                    label="Candlestick Only",
+                                                    method="update"
+                                                )
+                                            ]),
+                                            direction="down",
+                                            pad={"r": 10, "t": 10},
+                                            showactive=True,
+                                            x=0.1,
+                                            xanchor="left",
+                                            y=1.1,
+                                            yanchor="top"
+                                        ),
+                                    ]
+                                )
+                                
+                                # Rest of the layout
+                                fig.update_layout(
+                                    title='Interactive Candlestick Chart',
                                     yaxis_title='Price',
                                     xaxis_title='Date',
-                                    xaxis_rangeslider_visible=True,  # Add range slider
-                                    yaxis2=dict(title='Volume', overlaying='y', side='right'),  # Volume on secondary y-axis
-                                    height=600,  # Adjust height for better visibility
+                                    xaxis_rangeslider_visible=True,
+                                    yaxis2=dict(title='Volume', overlaying='y', side='right'),
+                                    height=600
                                 )
                                 st.plotly_chart(fig, use_container_width=True)
                             else:
@@ -542,7 +671,7 @@ with charts:
                             # Assuming 'data' has a MultiIndex, drop the second level of the MultiIndex
                             data.columns = data.columns.droplevel(1)
                             if not data.empty:
-                                # Create candlestick chart
+                                                # Create candlestick trace
                                 fig = go.Figure(data=[go.Candlestick(x=data['Date'],
                                                 open=data['Open'],
                                                 high=data['High'],
@@ -550,34 +679,74 @@ with charts:
                                                 close=data['Close'],
                                                 name='Candlestick')])
                                 
-                                # Add moving averages
+                                # Add moving averages (initially visible)
                                 fig.add_trace(go.Scatter(x=data['Date'], 
                                                          y=data['Close'].rolling(window=20).mean(), 
                                                          mode='lines', 
                                                          name='20-Day MA',
-                                                         line=dict(color='blue')))  # 20-day moving average
+                                                         line=dict(color='blue'),
+                                                         visible=True)) 
                                 
                                 fig.add_trace(go.Scatter(x=data['Date'], 
                                                          y=data['Close'].rolling(window=50).mean(), 
                                                          mode='lines', 
                                                          name='50-Day MA',
-                                                         line=dict(color='red')))  # 50-day moving average
+                                                         line=dict(color='red'),
+                                                         visible=True)) 
                                 
-                                # Add volume bars
+                                # Add volume bars (initially visible)
                                 fig.add_trace(go.Bar(x=data['Date'], 
                                                      y=data['Volume'], 
                                                      name='Volume',
                                                      marker_color='lightgray',
-                                                     yaxis='y2')) 
+                                                     yaxis='y2',
+                                                     visible=True)) 
                                 
-                                # Update layout for better visualization
+                                # Create dropdown menus for selection
                                 fig.update_layout(
-                                    title='Detailed Candlestick Chart with Volume and Moving Averages',
+                                    updatemenus=[
+                                        dict(
+                                            buttons=list([
+                                                dict(
+                                                    args=[{'visible': [True, True, True, True]}],  # All visible
+                                                    label="All",
+                                                    method="update"
+                                                ),
+                                                dict(
+                                                    args=[{'visible': [True, False, False, True]}],  # Candlestick and Volume
+                                                    label="Candlestick & Volume",
+                                                    method="update"
+                                                ),
+                                                dict(
+                                                    args=[{'visible': [True, True, True, False]}],  # Candlestick and MAs
+                                                    label="Candlestick & MAs",
+                                                    method="update"
+                                                ),
+                                                dict(
+                                                    args=[{'visible': [True, False, False, False]}],  # Only Candlestick
+                                                    label="Candlestick Only",
+                                                    method="update"
+                                                )
+                                            ]),
+                                            direction="down",
+                                            pad={"r": 10, "t": 10},
+                                            showactive=True,
+                                            x=0.1,
+                                            xanchor="left",
+                                            y=1.1,
+                                            yanchor="top"
+                                        ),
+                                    ]
+                                )
+                                
+                                # Rest of the layout
+                                fig.update_layout(
+                                    title='Interactive Candlestick Chart',
                                     yaxis_title='Price',
                                     xaxis_title='Date',
-                                    xaxis_rangeslider_visible=True,  # Add range slider
-                                    yaxis2=dict(title='Volume', overlaying='y', side='right'),  # Volume on secondary y-axis
-                                    height=600,  # Adjust height for better visibility
+                                    xaxis_rangeslider_visible=True,
+                                    yaxis2=dict(title='Volume', overlaying='y', side='right'),
+                                    height=600
                                 )
                                 st.plotly_chart(fig, use_container_width=True)
                             else:
