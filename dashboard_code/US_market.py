@@ -36,6 +36,7 @@ st.markdown("""
 
 st.title('US Market Dashboard')
 search,indexes, charts, sectors, heatmap, economic_indicators, technical_analysis = st.tabs(['Search',"Index", "Charts", "Sectors", "Heatmap", "Economic Indicators","Technical Analysis"])
+with search:
     # Download VADER lexicon
     nltk.download('vader_lexicon', quiet=True)
 
