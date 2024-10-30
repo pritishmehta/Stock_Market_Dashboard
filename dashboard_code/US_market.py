@@ -254,9 +254,9 @@ with search:
                 if (index_data['change'] == 0).any():
                     delta_color = "off"  # No change 
                 elif (index_data['change'] > 0).any():
-                    delta_color = "normal"  # Positive change 
+                    delta_color = "green"  # Positive change 
                 else:
-                    delta_color = "inverse"  # Negative change 
+                    delta_color = "red"  # Negative change 
 
                 st.metric(
                     label=index_name,
