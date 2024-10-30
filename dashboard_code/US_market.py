@@ -86,6 +86,7 @@ with search:
             try:
                 # Download index data from Yahoo Finance
                 data = yf.download(symbol, start=start_date, end=today)
+                st.write(data)
                 if not data.empty:
                     latest_price = data['Close'].iloc[-1]
                     prev_price = data['Close'].iloc[-2]
