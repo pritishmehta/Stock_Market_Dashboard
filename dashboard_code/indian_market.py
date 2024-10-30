@@ -678,23 +678,8 @@ with economic_indicators:
     # Check if all data is available
     if all(df is not None for df in [gdp_df, unemployment_df, inflation_df, interest_df]):
         # Sidebar controls
-        st.sidebar.header("Visualization Controls")
-        chart_type = st.sidebar.selectbox(
-            "Select Chart Type",
-            options=['line', 'bar'],
-            format_func=lambda x: x.title() + " Chart"
-        )
-        
-        # Set year range based on the data
-        year_min = int(min(gdp_df['Year'].min(), unemployment_df['Year'].min(), inflation_df['Year'].min(), interest_df['Year'].min()))
-        year_max = int(max(gdp_df['Year'].max(), unemployment_df['Year'].max(), inflation_df['Year'].max(), interest_df['Year'].max()))
-        
-        year_range = st.sidebar.slider(
-            "Select Year Range",
-            min_value=year_min,
-            max_value=year_max,
-            value=(year_min, year_max)
-        )
+        chart_type = 'line'  # or 'bar'
+        year_range = (2000, 2024)  # or any desired range
         
         # Filter data based on year range
         gdp_filtered = gdp_df[(gdp_df['Year'] >= year_range[0]) & (gdp_df['Year'] <= year_range[1])]
