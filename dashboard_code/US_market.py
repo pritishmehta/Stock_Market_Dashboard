@@ -379,8 +379,13 @@ with indexes:
     default_stocks = ['^NDX', '^GSPC', '^RUT', '^DJI', 'GC=F', 'SI=F']
     #for i in default_stocks:
     data = yf.download('^NDX',start=start_date_index,end=end_date_index)
-    data.columns[0] = 'Date'
-    data = data.drop(index=1)
+        # Reset the index to remove the MultiIndex
+    data.reset_index(inplace=True)
+    
+    # Assuming 'data' has a MultiIndex, drop the second level of the MultiIndex
+    data.columns = data.columns.droplevel(1)
+    
+    # Display the data
     st.write(data)
     fig_indexes = go.Figure()
     # Add candlestick trace
