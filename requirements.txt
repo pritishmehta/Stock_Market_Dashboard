@@ -10,11 +10,4 @@ stocknews
 pandas_datareader
 ta
 fuzzywuzzy
-beautifulsoup4==4.12.3
-langchain==0.1.16
-langchain-community==0.0.34
-langchain-core==0.1.45
-langchain-openai==0.1.3
-langchain-text-splitters==0.0.1
-streamlit-scrollable-textbox==0.0.3
-duckduckgo_search==5.3.1b1
+scikit-lear==1.0.2
