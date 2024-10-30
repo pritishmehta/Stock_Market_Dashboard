@@ -16,8 +16,8 @@ indian_market = st.Page(
 )
 
 stock_recommendation = st.Page(
-    page = 'dashboard_code/LLM_recommendation.py'
-    title= 'Stock Recommendation'
+    page='dashboard_code/LLM_recommendation.py'
+    title='Stock Recommendation'
 )
 pg = st.navigation(pages=[us_market,indian_market])
 
