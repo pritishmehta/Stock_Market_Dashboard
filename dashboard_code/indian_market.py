@@ -85,7 +85,38 @@ with search:
         if ticker.isalnum():  # Basic validation
             return f"{ticker}.NS"  # Default to NSE
         return ticker
-
+    def get_market_indices():
+        indices = {
+            '^NSEI': 'Nifty 50',
+            '^BSESN' : 'BSE Sensex'
+        }
+        
+        today = datetime.date.today()
+        start_date = today - datetime.timedelta(days=15)  # Get last 5 trading days
+        
+        indices_data = {}
+        for symbol, name in indices.items():
+            try:
+                # Download index data from Yahoo Finance
+                data = yf.download(symbol, start=start_date, end=today)
+                # Reset the index to remove the MultiIndex
+                data.reset_index(inplace=True)
+                # Assuming 'data' has a MultiIndex, drop the second level of the MultiIndex
+                data.columns = data.columns.droplevel(1)
+                if not data.empty:
+                    latest_price = data['Close'].iloc[-1]
+                    prev_price = data['Close'].iloc[-2]
+                    pct_change = ((latest_price - prev_price) / prev_price) * 100
+                    indices_data[name] = {
+                        'price': latest_price,
+                        'change': pct_change
+                    }
+                else:
+                    st.error(f"No data retrieved for {name} (symbol: {symbol}). Check symbol or data availability.")
+            except Exception as e:
+                st.error(f"Error fetching {name} data: {e}")
+        
+        return indices_data
     # Function to get YTD data for Indian stocks
     def get_ytd_data(ticker_symbol):
         try:
