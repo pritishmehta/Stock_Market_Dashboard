@@ -10,4 +10,4 @@ stocknews
 pandas_datareader
 ta
 fuzzywuzzy
-scikit-lear==1.0.2
+scikit-learn==1.0.2
