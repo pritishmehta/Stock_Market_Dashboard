@@ -424,36 +424,22 @@ with indexes:
                             company_name = 'Gold' if ticker == 'GC=F' else 'Silver' if ticker == 'SI=F' else ticker
                         
                         data = yf.download(ticker, start=start_date_index_1, end=end_date_index_1)
+                                # Reset the index to remove the MultiIndex
+                        data.reset_index(inplace=True)
+                        
+                        # Assuming 'data' has a MultiIndex, drop the second level of the MultiIndex
+                        data.columns = data.columns.droplevel(1)
                         if not data.empty:
-                            # Create candlestick chart
-                            fig = go.Figure(data=[go.Candlestick(x=data.index,
-                                open=data['Open'],
-                                high=data['High'],
-                                low=data['Low'],
-                                close=data['Close'],
-                                name=ticker)])
+                                   # Create candlestick trace
+                            fig = go.Figure(data=[go.Candlestick(x=data['Date'],
+                                    open=data['Open'],
+                                    high=data['High'],
+                                    low=data['Low'],
+                                    close=data['Close'])])
                             
-                            fig.update_layout(
-                                title=f'{company_name} ({ticker}) Price',
-                                yaxis_title='Price',
-                                xaxis_rangeslider_visible=True,  # This enables the rangeslider
-                                height=500,  # Increased height to accommodate the rangeslider
-                                width=None,
-                                xaxis=dict(
-                                    rangeselector=dict(
-                                        buttons=list([
-                                            dict(count=1, label="1m", step="month", stepmode="backward"),
-                                            dict(count=6, label="6m", step="month", stepmode="backward"),
-                                            dict(count=1, label="YTD", step="year", stepmode="todate"),
-                                            dict(count=1, label="1y", step="year", stepmode="backward"),
-                                            dict(step="all")
-                                        ])
-                                    ),
-                                    rangeslider=dict(visible=True),
-                                    type="date"
-                                )
-                            )
-                            
+                            fig.update_layout(title=f'{company_name} Price (Candlestick)',
+                                              yaxis_title='Price',
+                                              xaxis_title='Date')
                             st.plotly_chart(fig, use_container_width=True)
                         else:
                             st.write(f"No data available for {company_name} ({ticker})")
@@ -477,7 +463,11 @@ with charts:
         for index, row in final_df.iterrows():
             ticker = row['Ticker'] + '.NS'
             data = yf.download(ticker, period='5y', interval='1d')
-
+                                # Reset the index to remove the MultiIndex
+            data.reset_index(inplace=True)
+            
+            # Assuming 'data' has a MultiIndex, drop the second level of the MultiIndex
+            data.columns = data.columns.droplevel(1)
             fig = go.Figure(data=[go.Candlestick(x=data.index,
                                                 open=data['Open'],
                                                 high=data['High'],
@@ -503,7 +493,11 @@ with charts:
         for index, row in final_df.iterrows():
             ticker = row['Ticker'] + '.NS'
             data = yf.download(ticker, period='5y', interval='1d')
-
+                                # Reset the index to remove the MultiIndex
+            data.reset_index(inplace=True)
+            
+            # Assuming 'data' has a MultiIndex, drop the second level of the MultiIndex
+            data.columns = data.columns.droplevel(1)
             fig = go.Figure(data=[go.Candlestick(x=data.index,
                                                 open=data['Open'],
                                                 high=data['High'],
