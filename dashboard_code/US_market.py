@@ -373,7 +373,7 @@ with indexes:
     with col1:
         start_date_index = st.date_input('Start Date (Index)', datetime.date(2023,01 ,1), key='start_date_index')
     with col2:
-        end_date_index = st.date_input('End Date (Index)', datetime.date.today(), key='end_date_index')
+        end_date_index = st.date_input('End Date (Index)', datetime.date(2024,10,25), key='end_date_index')
 
     # Define default stocks
     default_stocks = ['^NDX', '^GSPC', '^RUT', '^DJI', 'GC=F', 'SI=F']
