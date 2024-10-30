@@ -1,37 +1,63 @@
 import streamlit as st
 import yfinance as yf
-import pandas as pd
-from sklearn.linear_model import LogisticRegression
+import nltk
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+import newsapi
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from ta.momentum import stoch, rsi
-from ta.trend import macd, adx
-from ta.volatility import bollinger_bands, average_true_range
-st.title("Stock Recommendation App")
-# Get user input for the stock ticker
-ticker = st.text_input("Enter a stock ticker:", "AAPL")
-# Fetch the stock data
-stock = yf.Ticker(ticker)
-df = stock.history(period="1y")
-# Calculate technical indicators
-df['stoch_k'], df['stoch_d'] = stoch(df['Close'])
-df['rsi'] = rsi(df['Close'])
-df['macd'], df['macd_signal'], df['macd_hist'] = macd(df['Close'])
-df['adx'] = adx(df['High'], df['Low'], df['Close'])
-df['bb_h'], df['bb_m'], df['bb_l'] = bollinger_bands(df['Close'])
-df['atr'] = average_true_range(df['High'], df['Low'], df['Close'])
-# Prepare the data for the machine learning model
-X = df[['stoch_k', 'stoch_d', 'rsi', 'macd', 'macd_signal', 'macd_hist', 'adx', 'bb_h', 'bb_m', 'bb_l', 'atr']]
-y = (df['Close'].shift(-1) > df['Close']).astype(int)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-# Train the machine learning model
-model = LogisticRegression()
-model.fit(X_train, y_train)
-# Get the prediction and recommendation
-prediction = model.predict(X_test)[0]
-if prediction == 0:
-   recommendation = "Hold"
-elif prediction == 1:
-   recommendation = "Buy"
-else:
-   recommendation = "Sell"
-st.write(f"The recommendation for {ticker} is: {recommendation}")
+import pandas as pd
+
+# Initialize News API
+newsapi = newsapi.NewsApiClient(api_key='YOUR_NEWS_API_KEY')
+
+# Initialize Sentiment Intensity Analyzer
+sia = SentimentIntensityAnalyzer()
+
+# Simplified ML Model (Replace with a trained model on stock data)
+def simple_ml_model(prediction_data):
+    # Placeholder for a real ML model
+    if prediction_data['Sentiment'][0] > 0.05:
+        return "Buy"
+    elif prediction_data['Sentiment'][0] < -0.05:
+        return "Sell"
+    else:
+        return "Hold"
+
+def app():
+    st.title("Stock Recommendation App")
+    
+    # User Input
+    ticker = st.text_input("Enter Stock Ticker", value="AAPL")
+    
+    if st.button("Analyze"):
+        try:
+            # Fetch Stock Data
+            stock_data = yf.Ticker(ticker)
+            hist = stock_data.history(period="7d")
+            
+            # News Sentiment Analysis
+            news = newsapi.get_everything(q=ticker, language='en', sort_by='relevancy')
+            sentiments = [sia.polarity_scores(article['title'])['compound'] for article in news['articles'][:5]]
+            avg_sentiment = sum(sentiments) / len(sentiments) if sentiments else 0
+            
+            # Simplified Candlestick Pattern Analysis (Demonstrative)
+            if hist.iloc[-1]['Close'] > hist.iloc[-2]['Close']:
+                pattern = "Upward Trend"
+            else:
+                pattern = "Downward Trend"
+            
+            # ML Model Prediction (Simplified)
+            prediction_data = pd.DataFrame({'Sentiment': [avg_sentiment]}, index=[0])
+            recommendation = simple_ml_model(prediction_data)
+            
+            # Display Results
+            st.subheader(f"Analysis for {ticker}:")
+            st.write(f"**News Sentiment:** {avg_sentiment:.2f}")
+            st.write(f"**Candlestick Pattern:** {pattern}")
+            st.write(f"**ML Recommendation:** {recommendation}")
+            
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
+
+if __name__ == "__main__":
+    app()
