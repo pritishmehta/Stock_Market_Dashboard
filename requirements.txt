@@ -11,3 +11,4 @@ pandas_datareader
 ta
 fuzzywuzzy
 scikit-learn
+ta.pattern
