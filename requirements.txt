@@ -8,7 +8,7 @@ yahooquery
 nltk
 stocknews
 pandas_datareader
-ta
+ta==0.8.0
 fuzzywuzzy
 scikit-learn
-ta.pattern
+
