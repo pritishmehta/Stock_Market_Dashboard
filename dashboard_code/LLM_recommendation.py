@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 import pandas as pd
 
 # Initialize News API
-newsapi = newsapi.NewsApiClient(api_key='YOUR_NEWS_API_KEY')
+newsapi = newsapi.NewsApiClient(api_key='f958536b80ef4db0ab133be499c8bd21')
 
 # Initialize Sentiment Intensity Analyzer
 sia = SentimentIntensityAnalyzer()
