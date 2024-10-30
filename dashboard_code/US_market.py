@@ -390,7 +390,7 @@ with indexes:
                 low=data['Low'],
                 close=data['Close'])])
 
-        fig.update_layout(title='Candlestick Chart',
+        fig.update_layout(title=f'{i} Price (Candlestick)',
                           yaxis_title='Price',
                           xaxis_title='Date')
         st.plotly_chart(fig, use_container_width=True)
@@ -442,7 +442,7 @@ with charts:
                                         low=data['Low'],
                                         close=data['Close'])])
                         
-                                fig.update_layout(title='Candlestick Chart',
+                                fig.update_layout(title=f'{company_name} Price (Candlestick)',
                                                   yaxis_title='Price',
                                                   xaxis_title='Date')
                                 st.plotly_chart(fig, use_container_width=True)
@@ -494,7 +494,7 @@ with charts:
                                         low=data['Low'],
                                         close=data['Close'])])
                         
-                                fig.update_layout(title='Candlestick Chart',
+                                fig.update_layout(title=f'{company_name} Price (Candlestick)',
                                                   yaxis_title='Price',
                                                   xaxis_title='Date')
                                 st.plotly_chart(fig, use_container_width=True)
