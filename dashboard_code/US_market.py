@@ -371,7 +371,7 @@ with search:
 with indexes:
     col1, col2 = st.columns(2)
     with col1:
-        start_date_index = st.date_input('Start Date (Index)', datetime.date(2023,01 ,1), key='start_date_index')
+        start_date_index = st.date_input('Start Date (Index)', datetime.date(2023,1,1), key='start_date_index')
     with col2:
         end_date_index = st.date_input('End Date (Index)', datetime.date(2024,10,25), key='end_date_index')
 
