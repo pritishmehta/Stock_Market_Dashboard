@@ -377,7 +377,8 @@ with indexes:
     # Define default stocks
     default_stocks = ['^NDX', '^GSPC', '^RUT', '^DJI', 'GC=F', 'SI=F']
     #for i in default_stocks:
-    data = yf.download('^NDX',start=start_date_index,end=end_date_index)
+    data = yf.download('^NDX',start=start_date_index,end=end_date_index-1)
+    st.write(data)
     fig_indexes = go.Figure()
     # Add candlestick trace
     fig_indexes.add_trace(go.Candlestick(x=data.index,
