@@ -36,19 +36,6 @@ st.markdown("""
 
 st.title('US Market Dashboard')
 search,indexes, charts, sectors, heatmap, economic_indicators, technical_analysis = st.tabs(['Search',"Index", "Charts", "Sectors", "Heatmap", "Economic Indicators","Technical Analysis"])
-
-def plot_candlestick_chart(data, ticker):
-    fig = go.Figure(data=[go.Candlestick(x=data['Date'],
-                    open=data['Open'],
-                    high=data['High'],
-                    low=data['Low'],
-                    close=data['Close'])])
-    
-    fig.update_layout(title='Candlestick Chart',
-                      yaxis_title='Price',
-                      xaxis_title='Date')
-    return fig
-with search:
     # Download VADER lexicon
     nltk.download('vader_lexicon', quiet=True)
 
@@ -116,7 +103,7 @@ with search:
 
 
     # Function to plot candlestick chart
-    def plot_candlestick_chart_1(data, ticker):
+    def plot_candlestick_chart(data, ticker):
         fig = go.Figure(data=[go.Candlestick(x=data['Date'],
                         open=data['Open'],
                         high=data['High'],
@@ -377,7 +364,15 @@ with indexes:
         # Assuming 'data' has a MultiIndex, drop the second level of the MultiIndex
         data.columns = data.columns.droplevel(1)
                 # Create candlestick trace
-        plot_candlestick_chart(data)
+        fig = go.Figure(data=[go.Candlestick(x=data['Date'],
+                open=data['Open'],
+                high=data['High'],
+                low=data['Low'],
+                close=data['Close'])])
+        
+        fig.update_layout(title='Candlestick Chart',
+                          yaxis_title='Price',
+                          xaxis_title='Date')
         st.plotly_chart(fig, use_container_width=True)
     
 # In your main Streamlit app:
@@ -421,7 +416,15 @@ with charts:
                             data.columns = data.columns.droplevel(1)
                             if not data.empty:
                                 # Create candlestick trace
-                                plot_candlestick_chart(data)
+                                fig = go.Figure(data=[go.Candlestick(x=data['Date'],
+                                open=data['Open'],
+                                high=data['High'],
+                                low=data['Low'],
+                                close=data['Close'])])
+                                
+                                fig.update_layout(title='Candlestick Chart',
+                                                  yaxis_title='Price',
+                                                  xaxis_title='Date')
                                 st.plotly_chart(fig, use_container_width=True)
                             else:
                                 st.write(f"No data available for {company_name} ({ticker})")
@@ -466,7 +469,15 @@ with charts:
                             data.columns = data.columns.droplevel(1)
                             if not data.empty:
                                 # Create candlestick trace
-                                plot_candlestick_chart(data)
+                                fig = go.Figure(data=[go.Candlestick(x=data['Date'],
+                                open=data['Open'],
+                                high=data['High'],
+                                low=data['Low'],
+                                close=data['Close'])])
+                                
+                                fig.update_layout(title='Candlestick Chart',
+                                                  yaxis_title='Price',
+                                                  xaxis_title='Date')
                                 st.plotly_chart(fig, use_container_width=True)
                             else:
                                 st.write(f"No data available for {company_name} ({ticker})")
