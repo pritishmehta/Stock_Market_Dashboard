@@ -274,7 +274,7 @@ with search:
     if 'is_loading' not in st.session_state:
         st.session_state.is_loading = False
 
-    ticker = st.text_input("Enter Stock Symbol").upper()
+    ticker = st.text_input("Enter Ticker Name").upper()
 
     if ticker:
         st.session_state.is_loading = True
