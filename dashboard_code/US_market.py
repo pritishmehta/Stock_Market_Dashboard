@@ -386,15 +386,15 @@ with indexes:
         data.columns = data.columns.droplevel(1)
         fig_indexes = go.Figure()
         # Add candlestick trace
-        fig_indexes.add_trace(go.Candlestick(x=data.index,
+        fig.add_trace(go.Candlestick(x=data.index,
                                     open=data['Open'],
                                     high=data['High'],
                                     low=data['Low'],
                                     close=data['Close'],
-                                    name=f'{i} Candlestick'))
-    
-        fig_indexes.update_layout(
-            title=f'{i} Price (Candlestick)',
+                                    name=f'{ticker} Candlestick'))
+
+        fig.update_layout(
+            title=f'{ticker} Price (Candlestick)',
             yaxis_title='Price ($)',  # Changed to USD
             xaxis_rangeslider_visible=True,
             height=500,
@@ -411,7 +411,7 @@ with indexes:
                 type="date"
             )
         )
-        st.plotly_chart(fig_indexes, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True)
     
 # In your main Streamlit app:
 with charts:
@@ -454,35 +454,33 @@ with charts:
                             data.columns = data.columns.droplevel(1)
                             if not data.empty:
                                 # Create candlestick chart
-                                fig_gainers = go.Figure(data=[go.Candlestick(x=data.index,
+                                fig = go.Figure(data=[go.Candlestick(x=data.index,
                                     open=data['Open'],
                                     high=data['High'],
                                     low=data['Low'],
                                     close=data['Close'],
                                     name=ticker)])
                                 
-                                fig_gainers.update_layout(
-                                    title=f'{company_name} ({ticker}) Price',
-                                    yaxis_title='Price',
-                                    xaxis_rangeslider_visible=True,  # This enables the rangeslider
-                                    height=500,  # Increased height to accommodate the rangeslider
-                                    width=None,
-                                    xaxis=dict(
-                                        rangeselector=dict(
-                                            buttons=list([
-                                                dict(count=1, label="1m", step="month", stepmode="backward"),
-                                                dict(count=6, label="6m", step="month", stepmode="backward"),
-                                                dict(count=1, label="YTD", step="year", stepmode="todate"),
-                                                dict(count=1, label="1y", step="year", stepmode="backward"),
-                                                dict(step="all")
-                                            ])
-                                        ),
-                                        rangeslider=dict(visible=True),
-                                        type="date"
-                                    )
+                                fig.update_layout(
+                                title=f'{ticker} Price (Candlestick)',
+                                yaxis_title='Price ($)',  # Changed to USD
+                                xaxis_rangeslider_visible=True,
+                                height=500,
+                                xaxis=dict(
+                                    rangeselector=dict(
+                                        buttons=list([
+                                            dict(count=1, label="1m", step="month", stepmode="backward"),
+                                            dict(count=6, label="6m", step="month", stepmode="backward"),
+                                            dict(count=1, label="1y", step="year", stepmode="backward"),
+                                            dict(count=1, label="YTD", step="year", stepmode="todate")
+                                        ])
+                                    ),
+                                    rangeslider=dict(visible=True),
+                                    type="date"
                                 )
-                                
-                                st.plotly_chart(fig_gainers, use_container_width=True)
+                            )
+                                                    
+                                st.plotly_chart(fig, use_container_width=True)
                             else:
                                 st.write(f"No data available for {company_name} ({ticker})")
                         except Exception as e:
@@ -525,17 +523,33 @@ with charts:
                             # Assuming 'data' has a MultiIndex, drop the second level of the MultiIndex
                             data.columns = data.columns.droplevel(1)
                             if not data.empty:
-                                fig_losers = go.Figure(data=[go.Candlestick(
-                                    x=data.index,
-                                    open=data['Open'],
-                                    high=data['High'],
-                                    low=data['Low'],
-                                    close=data['Close'],
-                                    increasing_line_color='green',
-                                    decreasing_line_color='red'
-                                )])
-                                fig_losers.update_layout(xaxis_title='Date', yaxis_title='Price')
-                                st.plotly_chart(fig_losers, key=f'candlestick_{company_name}')  # Unique key for each chart
+                                fig = go.Figure(data=[go.Candlestick(x=data.index,
+                                open=data['Open'],
+                                high=data['High'],
+                                low=data['Low'],
+                                close=data['Close'],
+                                name=ticker)])
+                            
+                                fig.update_layout(
+                                title=f'{ticker} Price (Candlestick)',
+                                yaxis_title='Price ($)',  # Changed to USD
+                                xaxis_rangeslider_visible=True,
+                                height=500,
+                                xaxis=dict(
+                                    rangeselector=dict(
+                                        buttons=list([
+                                            dict(count=1, label="1m", step="month", stepmode="backward"),
+                                            dict(count=6, label="6m", step="month", stepmode="backward"),
+                                            dict(count=1, label="1y", step="year", stepmode="backward"),
+                                            dict(count=1, label="YTD", step="year", stepmode="todate")
+                                        ])
+                                    ),
+                                    rangeslider=dict(visible=True),
+                                    type="date"
+                                )
+                            )
+                                                    
+                                st.plotly_chart(fig, use_container_width=True)
                             else:
                                 st.write(f"No data available for {company_name} ({ticker})")
                         except Exception as e:
