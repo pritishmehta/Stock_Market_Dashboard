@@ -385,14 +385,41 @@ with indexes:
         # Assuming 'data' has a MultiIndex, drop the second level of the MultiIndex
         data.columns = data.columns.droplevel(1)
         fig = go.Figure(data=[go.Candlestick(x=data['Date'],
-                open=data['Open'],
-                high=data['High'],
-                low=data['Low'],
-                close=data['Close'])])
-
-        fig.update_layout(title=f'{i} Price (Candlestick)',
-                          yaxis_title='Price',
-                          xaxis_title='Date')
+                        open=data['Open'],
+                        high=data['High'],
+                        low=data['Low'],
+                        close=data['Close'],
+                        name='Candlestick')])
+        
+        # Add moving averages
+        fig.add_trace(go.Scatter(x=data['Date'], 
+                                 y=data['Close'].rolling(window=20).mean(), 
+                                 mode='lines', 
+                                 name='20-Day MA',
+                                 line=dict(color='blue')))  # 20-day moving average
+        
+        fig.add_trace(go.Scatter(x=data['Date'], 
+                                 y=data['Close'].rolling(window=50).mean(), 
+                                 mode='lines', 
+                                 name='50-Day MA',
+                                 line=dict(color='red')))  # 50-day moving average
+        
+        # Add volume bars
+        fig.add_trace(go.Bar(x=data['Date'], 
+                             y=data['Volume'], 
+                             name='Volume',
+                             marker_color='lightgray',
+                             yaxis='y2')) 
+        
+        # Update layout for better visualization
+        fig.update_layout(
+            title='Detailed Candlestick Chart with Volume and Moving Averages',
+            yaxis_title='Price',
+            xaxis_title='Date',
+            xaxis_rangeslider_visible=True,  # Add range slider
+            yaxis2=dict(title='Volume', overlaying='y', side='right'),  # Volume on secondary y-axis
+            height=600,  # Adjust height for better visibility
+        )
         st.plotly_chart(fig, use_container_width=True)
     
 # In your main Streamlit app:
@@ -437,14 +464,41 @@ with charts:
                             if not data.empty:
                                 # Create candlestick chart
                                 fig = go.Figure(data=[go.Candlestick(x=data['Date'],
-                                        open=data['Open'],
-                                        high=data['High'],
-                                        low=data['Low'],
-                                        close=data['Close'])])
-                        
-                                fig.update_layout(title=f'{company_name} Price (Candlestick)',
-                                                  yaxis_title='Price',
-                                                  xaxis_title='Date')
+                                                open=data['Open'],
+                                                high=data['High'],
+                                                low=data['Low'],
+                                                close=data['Close'],
+                                                name='Candlestick')])
+                                
+                                # Add moving averages
+                                fig.add_trace(go.Scatter(x=data['Date'], 
+                                                         y=data['Close'].rolling(window=20).mean(), 
+                                                         mode='lines', 
+                                                         name='20-Day MA',
+                                                         line=dict(color='blue')))  # 20-day moving average
+                                
+                                fig.add_trace(go.Scatter(x=data['Date'], 
+                                                         y=data['Close'].rolling(window=50).mean(), 
+                                                         mode='lines', 
+                                                         name='50-Day MA',
+                                                         line=dict(color='red')))  # 50-day moving average
+                                
+                                # Add volume bars
+                                fig.add_trace(go.Bar(x=data['Date'], 
+                                                     y=data['Volume'], 
+                                                     name='Volume',
+                                                     marker_color='lightgray',
+                                                     yaxis='y2')) 
+                                
+                                # Update layout for better visualization
+                                fig.update_layout(
+                                    title='Detailed Candlestick Chart with Volume and Moving Averages',
+                                    yaxis_title='Price',
+                                    xaxis_title='Date',
+                                    xaxis_rangeslider_visible=True,  # Add range slider
+                                    yaxis2=dict(title='Volume', overlaying='y', side='right'),  # Volume on secondary y-axis
+                                    height=600,  # Adjust height for better visibility
+                                )
                                 st.plotly_chart(fig, use_container_width=True)
                             else:
                                 st.write(f"No data available for {company_name} ({ticker})")
@@ -488,15 +542,43 @@ with charts:
                             # Assuming 'data' has a MultiIndex, drop the second level of the MultiIndex
                             data.columns = data.columns.droplevel(1)
                             if not data.empty:
+                                # Create candlestick chart
                                 fig = go.Figure(data=[go.Candlestick(x=data['Date'],
-                                        open=data['Open'],
-                                        high=data['High'],
-                                        low=data['Low'],
-                                        close=data['Close'])])
-                        
-                                fig.update_layout(title=f'{company_name} Price (Candlestick)',
-                                                  yaxis_title='Price',
-                                                  xaxis_title='Date')
+                                                open=data['Open'],
+                                                high=data['High'],
+                                                low=data['Low'],
+                                                close=data['Close'],
+                                                name='Candlestick')])
+                                
+                                # Add moving averages
+                                fig.add_trace(go.Scatter(x=data['Date'], 
+                                                         y=data['Close'].rolling(window=20).mean(), 
+                                                         mode='lines', 
+                                                         name='20-Day MA',
+                                                         line=dict(color='blue')))  # 20-day moving average
+                                
+                                fig.add_trace(go.Scatter(x=data['Date'], 
+                                                         y=data['Close'].rolling(window=50).mean(), 
+                                                         mode='lines', 
+                                                         name='50-Day MA',
+                                                         line=dict(color='red')))  # 50-day moving average
+                                
+                                # Add volume bars
+                                fig.add_trace(go.Bar(x=data['Date'], 
+                                                     y=data['Volume'], 
+                                                     name='Volume',
+                                                     marker_color='lightgray',
+                                                     yaxis='y2')) 
+                                
+                                # Update layout for better visualization
+                                fig.update_layout(
+                                    title='Detailed Candlestick Chart with Volume and Moving Averages',
+                                    yaxis_title='Price',
+                                    xaxis_title='Date',
+                                    xaxis_rangeslider_visible=True,  # Add range slider
+                                    yaxis2=dict(title='Volume', overlaying='y', side='right'),  # Volume on secondary y-axis
+                                    height=600,  # Adjust height for better visibility
+                                )
                                 st.plotly_chart(fig, use_container_width=True)
                             else:
                                 st.write(f"No data available for {company_name} ({ticker})")
