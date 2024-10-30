@@ -370,14 +370,14 @@ with search:
 with indexes:
     col1, col2 = st.columns(2)
     with col1:
-        start_date_index = st.date_input('Start Date (Index)', datetime.date(2024, 1, 10), key='start_date_index')
+        start_date_index = st.date_input('Start Date (Index)', datetime.date(2024,10 ,1), key='start_date_index')
     with col2:
-        end_date_index = st.date_input('End Date (Index)', datetime.date.today(), key='end_date_index')
+        end_date_index = st.date_input('End Date (Index)', datetime.date(2024,10,25) key='end_date_index')
 
     # Define default stocks
     default_stocks = ['^NDX', '^GSPC', '^RUT', '^DJI', 'GC=F', 'SI=F']
     #for i in default_stocks:
-    data = yf.download('^NDX',start=start_date_index,end=end_date_index-1)
+    data = yf.download('^NDX',start=start_date_index,end=end_date_index)
     st.write(data)
     fig_indexes = go.Figure()
     # Add candlestick trace
