@@ -86,7 +86,10 @@ with search:
             try:
                 # Download index data from Yahoo Finance
                 data = yf.download(symbol, start=start_date, end=today)
-                st.write(data)
+                # Reset the index to remove the MultiIndex
+                data.reset_index(inplace=True)
+                # Assuming 'data' has a MultiIndex, drop the second level of the MultiIndex
+                data.columns = data.columns.droplevel(1)
                 if not data.empty:
                     latest_price = data['Close'].iloc[-1]
                     prev_price = data['Close'].iloc[-2]
