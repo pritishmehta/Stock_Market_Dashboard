@@ -387,7 +387,7 @@ with charts:
         gainers = pd.read_html('https://finance.yahoo.com/markets/stocks/gainers/')
         df_1 = gainers[0]
         # Drop the unwanted columns
-        df_1 = df_1.drop(columns=['Volume', 'Avg Vol (3M)', 'Market Cap', 'P/E Ratio (TTM)', '52 Wk Change %', '52 Wk Range','Day Chart'])
+        df_1 = df_1.drop(columns=['Volume', 'Avg Vol (3M)', 'Market Cap', 'P/E Ratio (TTM)', '52 Wk Change %', '52 Wk Range'])
         df_1 = df_1.head(10)
         st.write(df_1)
         gainers = df_1['Symbol']
