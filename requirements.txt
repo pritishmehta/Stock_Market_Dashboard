@@ -12,3 +12,5 @@ ta==0.8.0
 fuzzywuzzy
 scikit-learn
 newsapi-python
+tensorflow
+statsmodels
