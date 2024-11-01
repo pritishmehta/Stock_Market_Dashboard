@@ -15,3 +15,4 @@ newsapi-python
 tensorflow
 statsmodels
 seaborn
+arch
