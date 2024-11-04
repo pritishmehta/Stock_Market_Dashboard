@@ -8,7 +8,7 @@ from keras.layers import Dense, LSTM, Dropout
 
 # Function to fetch stock data
 def fetch_stock_data(stock):
-    data = yf.download(stock, period='1y')
+    data = yf.download(stock, period='5y')
     # Reset the index to remove the MultiIndex
     data.reset_index(inplace=True)
     # Assuming 'data' has a MultiIndex, drop the second level of the MultiIndex
