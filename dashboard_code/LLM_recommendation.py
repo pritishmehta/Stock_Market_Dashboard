@@ -9,6 +9,9 @@ from keras.layers import Dense, LSTM, Dropout
 # Function to fetch stock data
 def fetch_stock_data(stock):
     data = yf.download(stock, period='1y')
+    if data.empty:
+        st.error("No data found for this stock. Please try again.")
+        return None
     return data
 
 # Function to prepare data for training
@@ -53,6 +56,9 @@ model_type = st.selectbox('Select model', ['LSTM', 'Dense'])
 
 # Fetch and prepare data
 data = fetch_stock_data(stock)
+if data is None:
+    st.stop()
+
 scaled_data = prepare_data(data)
 
 # Split data into training and testing sets
