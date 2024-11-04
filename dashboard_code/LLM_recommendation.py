@@ -9,6 +9,11 @@ from keras.layers import Dense, LSTM, Dropout
 # Function to fetch stock data
 def fetch_stock_data(stock):
     data = yf.download(stock, period='1y')
+    # Reset the index to remove the MultiIndex
+    data.reset_index(inplace=True)
+    # Assuming 'data' has a MultiIndex, drop the second level of the MultiIndex
+    data.columns = data.columns.droplevel(1)
+    st.write(data)
     if data.empty:
         st.error("No data found for this stock. Please try again.")
         return None
