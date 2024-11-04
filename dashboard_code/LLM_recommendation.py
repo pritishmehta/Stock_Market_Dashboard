@@ -6,5 +6,5 @@ from sklearn.preprocessing import MinMaxScaler
 from keras.models import Sequential
 from keras.layers import Dense, LSTM, Dropout
 
-data = yf.download('APPL', period = '5y')
+data = yf.download('AAPL', period = '5y')
 st.write(data)
