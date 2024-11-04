@@ -68,16 +68,18 @@ test_data = scaled_data[train_size:]
 
 # Reshape data for LSTM model
 if model_type == 'LSTM':
-    train_data = np.reshape(train_data, (train_data.shape[0], 1, 1))
-    test_data = np.reshape(test_data, (test_data.shape[0], 1, 1))
+    train_data_reshaped = np.reshape(train_data, (train_data.shape[0], 1, 1))
+    test_data_reshaped = np.reshape(test_data, (test_data.shape[0], 1, 1))
     model = create_lstm_model((1, 1))
 else:
+    train_data_reshaped = train_data
+    test_data_reshaped = test_data
     model = create_dense_model((train_data.shape[1],))
 
-model.fit(train_data, train_data, epochs=50, batch_size=32, verbose=1)
+model.fit(train_data_reshaped, train_data, epochs=50, batch_size=32, verbose=1)
 
 # Make predictions
-predictions = make_predictions(model, test_data)
+predictions = make_predictions(model, test_data_reshaped)
 
 # Inverse transform the predictions to original scale
 predictions = scaler.inverse_transform(predictions)
