@@ -54,7 +54,8 @@ st.title('Stock Analysis and Prediction')
 # User input
 stock = st.text_input('Enter stock symbol', 'AAPL')
 model_type = st.selectbox('Select model', ['LSTM', 'Dense'])
-
+data = yf.download(stock, period='1y')
+st.write(data)
 # Fetch and prepare data
 data = fetch_stock_data(stock)
 if data is None:
