@@ -66,6 +66,10 @@ train_size = int(len(scaled_data) * 0.8)
 train_data = scaled_data[:train_size]
 test_data = scaled_data[train_size:]
 
+# Reshape data for LSTM model
+train_data = np.reshape(train_data, (train_data.shape[0], 1, train_data.shape[1]))
+test_data = np.reshape(test_data, (test_data.shape[0], 1, test_data.shape[1]))
+
 # Create and train model
 if model_type == 'LSTM':
     model = create_lstm_model(train_data)
