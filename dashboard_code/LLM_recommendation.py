@@ -9,6 +9,7 @@ from keras.layers import Dense, LSTM, Dropout
 # Function to fetch stock data
 def fetch_stock_data(stock):
     data = yf.download(stock, period='1y')
+    st.write(data)
     if data.empty:
         st.error("No data found for this stock. Please try again.")
         return None
