@@ -9,11 +9,6 @@ from keras.layers import Dense, LSTM, Dropout
 # Function to fetch stock data
 def fetch_stock_data(stock):
     data = yf.download(stock, period='1y')
-    # Reset the index to remove the MultiIndex
-    data.reset_index(inplace=True)
-    # Assuming 'data' has a MultiIndex, drop the second level of the MultiIndex
-    data.columns = data.columns.droplevel(1)
-    st.write(data)
     if data.empty:
         st.error("No data found for this stock. Please try again.")
         return None
@@ -23,12 +18,12 @@ def fetch_stock_data(stock):
 def prepare_data(data):
     scaler = MinMaxScaler()
     scaled_data = scaler.fit_transform(data['Close'].values.reshape(-1, 1))
-    return scaled_data
+    return scaled_data, scaler
 
 # Function to create and train LSTM model
-def create_lstm_model(data):
+def create_lstm_model(input_shape):
     model = Sequential()
-    model.add(LSTM(50, return_sequences=True, input_shape=(data.shape[1], 1)))
+    model.add(LSTM(50, return_sequences=True, input_shape=input_shape))
     model.add(Dropout(0.2))
     model.add(LSTM(50, return_sequences=False))
     model.add(Dropout(0.2))
@@ -37,9 +32,9 @@ def create_lstm_model(data):
     return model
 
 # Function to create and train Dense model
-def create_dense_model(data):
+def create_dense_model(input_shape):
     model = Sequential()
-    model.add(Dense(64, activation='relu', input_shape=(data.shape[1],)))
+    model.add(Dense(64, activation='relu', input_shape=input_shape))
     model.add(Dropout(0.2))
     model.add(Dense(32, activation='relu'))
     model.add(Dropout(0.2))
@@ -64,7 +59,7 @@ data = fetch_stock_data(stock)
 if data is None:
     st.stop()
 
-scaled_data = prepare_data(data)
+scaled_data, scaler = prepare_data(data)
 
 # Split data into training and testing sets
 train_size = int(len(scaled_data) * 0.8)
@@ -72,19 +67,20 @@ train_data = scaled_data[:train_size]
 test_data = scaled_data[train_size:]
 
 # Reshape data for LSTM model
-train_data = np.reshape(train_data, (train_data.shape[0], 1, train_data.shape[1]))
-test_data = np.reshape(test_data, (test_data.shape[0], 1, test_data.shape[1]))
-
-# Create and train model
 if model_type == 'LSTM':
-    model = create_lstm_model(train_data)
+    train_data = np.reshape(train_data, (train_data.shape[0], 1, 1))
+    test_data = np.reshape(test_data, (test_data.shape[0], 1, 1))
+    model = create_lstm_model((1, 1))
 else:
-    model = create_dense_model(train_data)
+    model = create_dense_model((train_data.shape[1],))
 
-model.fit(train_data, epochs=50, batch_size=32, verbose=0)
+model.fit(train_data, train_data, epochs=50, batch_size=32, verbose=1)
 
 # Make predictions
 predictions = make_predictions(model, test_data)
+
+# Inverse transform the predictions to original scale
+predictions = scaler.inverse_transform(predictions)
 
 # Display results
 st.write('Predictions:')
