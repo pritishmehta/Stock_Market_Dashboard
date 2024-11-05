@@ -16,3 +16,4 @@ tensorflow
 statsmodels
 seaborn
 arch
+talib
