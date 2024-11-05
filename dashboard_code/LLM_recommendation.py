@@ -7,7 +7,6 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, LSTM, Dropout, GRU
 from tensorflow.keras.optimizers import Adam
 from sklearn.metrics import mean_squared_error, r2_score
-import talib
 
 # Function to fetch live stock data
 def get_live_data(symbol):
@@ -18,9 +17,27 @@ def get_live_data(symbol):
 # Feature engineering
 def engineer_features(df):
     df['moving_avg_30'] = df['Close'].rolling(window=30).mean()
-    df['rsi'] = talib.RSI(df['Close'], timeperiod=14)
-    df['macd'], df['signal'], df['hist'] = talib.MACD(df['Close'], fastper=12, slowper=26, signalper=9)
+    df['rsi'] = calculate_rsi(df['Close'])
+    df['macd'], df['signal'], df['hist'] = calculate_macd(df['Close'])
     return df
+
+def calculate_rsi(prices, window=14):
+    delta = prices.diff()
+    gain = delta.where(delta > 0, 0)
+    loss = -delta.where(delta < 0, 0)
+    avg_gain = gain.rolling(window).mean()
+    avg_loss = loss.rolling(window).mean()
+    rs = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi
+
+def calculate_macd(prices, fast=12, slow=26, signal=9):
+    exp1 = prices.ewm(span=fast, adjust=False).mean()
+    exp2 = prices.ewm(span=slow, adjust=False).mean()
+    macd = exp1 - exp2
+    signal = macd.ewm(span=signal, adjust=False).mean()
+    hist = macd - signal
+    return macd, signal, hist
 
 # Define the models
 models = {
