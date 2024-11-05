@@ -7,6 +7,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, LSTM, Dropout, GRU
 from tensorflow.keras.optimizers import Adam
 from sklearn.metrics import mean_squared_error, r2_score
+import talib
 
 # Function to fetch live stock data
 def get_live_data(symbol):
