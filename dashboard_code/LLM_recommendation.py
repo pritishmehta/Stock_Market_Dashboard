@@ -41,7 +41,7 @@ models = {
 
 # Compile and train the models
 for name, model in models.items():
-    model.compile(optimizer=Adam(lr=0.001), loss='mean_squared_error')
+    model.compile(optimizer=Adam(), loss='mean_squared_error')
     
     # Load and prepare the data
     df = get_live_data('AAPL')
