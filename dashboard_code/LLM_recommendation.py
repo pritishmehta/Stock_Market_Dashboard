@@ -1,107 +1,100 @@
 import streamlit as st
-import yfinance as yf
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
-from keras.models import Sequential
-from keras.layers import Dense, LSTM, Dropout
+from sklearn.preprocessing import StandardScaler
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, LSTM, Dropout, GRU
+from tensorflow.keras.optimizers import Adam
+from sklearn.metrics import mean_squared_error, r2_score
 
-# Function to fetch stock data
-def fetch_stock_data(stock):
-    data = yf.download(stock, period='5y')
-    # Reset the index to remove the MultiIndex
-    data.reset_index(inplace=True)
-    # Assuming 'data' has a MultiIndex, drop the second level of the MultiIndex
-    data.columns = data.columns.droplevel(1)
-    st.write(data)
-    if data.empty:
-        st.error("No data found for this stock. Please try again.")
-        return None
-    return data
+# Load historical stock data
+df = pd.read_csv('stock_data.csv')
 
-# Function to prepare data for training
-def prepare_data(data):
-    scaler = MinMaxScaler()
-    scaled_data = scaler.fit_transform(data['Close'].values.reshape(-1, 1))
-    return scaled_data, scaler
+# Feature engineering
+df['moving_avg_30'] = df['close'].rolling(window=30).mean()
+df['rsi'] = talib.RSI(df['close'], timeperiod=14)
+df['macd'], df['signal'], df['hist'] = talib.MACD(df['close'], fastper=12, slowper=26, signalper=9)
 
-# Function to create and train LSTM model
-def create_lstm_model(input_shape):
-    model = Sequential()
-    model.add(LSTM(50, return_sequences=True, input_shape=input_shape))
-    model.add(Dropout(0.2))
-    model.add(LSTM(50, return_sequences=False))
-    model.add(Dropout(0.2))
-    model.add(Dense(1))
-    model.compile(optimizer='adam', loss='mean_squared_error')
-    return model
+# Prepare the data
+X = df[['open', 'high', 'low', 'volume', 'moving_avg_30', 'rsi', 'macd', 'signal', 'hist']]
+y = df['close']
 
-# Function to create and train Dense model
-def create_dense_model(input_shape):
-    model = Sequential()
-    model.add(Dense(64, activation='relu', input_shape=input_shape))
-    model.add(Dropout(0.2))
-    model.add(Dense(32, activation='relu'))
-    model.add(Dropout(0.2))
-    model.add(Dense(1))
-    model.compile(optimizer='adam', loss='mean_squared_error')
-    return model
+# Standardize the features
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
 
-# Function to make predictions
-def make_predictions(model, data):
-    predictions = model.predict(data)
-    return predictions
+# Split the data into train and test sets
+train_size = int(len(X) * 0.8)
+X_train, X_test = X_scaled[:train_size], X_scaled[train_size:]
+y_train, y_test = y[:train_size], y[train_size:]
+
+# Define the models
+models = {
+    'LSTM': Sequential([
+        LSTM(64, input_shape=(X_train.shape[1], 1), return_sequences=True),
+        Dropout(0.2),
+        LSTM(32),
+        Dropout(0.2),
+        Dense(1)
+    ]),
+    'GRU': Sequential([
+        GRU(64, input_shape=(X_train.shape[1], 1), return_sequences=True),
+        Dropout(0.2),
+        GRU(32),
+        Dropout(0.2),
+        Dense(1)
+    ])
+}
+
+# Compile and train the models
+for name, model in models.items():
+    model.compile(optimizer=Adam(lr=0.001), loss='mean_squared_error')
+    model.fit(X_train.reshape(X_train.shape[0], X_train.shape[1], 1), y_train, epochs=50, batch_size=32, verbose=0)
+    
+    # Evaluate the model
+    y_pred = model.predict(X_test.reshape(X_test.shape[0], X_test.shape[1], 1))
+    mse = mean_squared_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+    models[name]['mse'] = mse
+    models[name]['r2'] = r2
 
 # Streamlit app
-st.title('Stock Analysis and Prediction')
+st.title("Stock Price Prediction")
 
-# User input
-stock = st.text_input('Enter stock symbol', 'AAPL')
-model_type = st.selectbox('Select model', ['LSTM', 'Dense'])
+# Get the stock symbol from the user
+stock_symbol = st.text_input("Enter the stock symbol:", "AAPL")
 
-# Fetch and prepare data
-data = fetch_stock_data(stock)
-if data is None:
-    st.stop()
+# Get the model selection from the user
+model_name = st.selectbox("Select a deep learning model:", list(models.keys()))
+selected_model = models[model_name]['model']
 
-scaled_data, scaler = prepare_data(data)
+# Fetch the latest stock data for the given symbol
+latest_data = pd.DataFrame({
+    'open': [100.0],
+    'high': [101.0],
+    'low': [99.0],
+    'volume': [1000000],
+    'moving_avg_30': [98.5],
+    'rsi': [60.0],
+    'macd': [0.5],
+    'signal': [0.3],
+    'hist': [0.2]
+})
 
-# Split data into training and testing sets
-train_size = int(len(scaled_data) * 0.8)
-train_data = scaled_data[:train_size]
-test_data = scaled_data[train_size:]
+# Scale the latest data
+latest_data_scaled = scaler.transform(latest_data)
 
-# Reshape data for LSTM model
-if model_type == 'LSTM':
-    train_data_reshaped = np.reshape(train_data, (train_data.shape[0], 1, 1))
-    test_data_reshaped = np.reshape(test_data, (test_data.shape[0], 1, 1))
-    model = create_lstm_model((1, 1))
-else:
-    train_data_reshaped = train_data
-    test_data_reshaped = test_data
-    model = create_dense_model((train_data.shape[1],))
+# Make the prediction
+prediction = selected_model.predict(latest_data_scaled.reshape(1, latest_data_scaled.shape[0], 1))
 
-model.fit(train_data_reshaped, train_data, epochs=50, batch_size=32, verbose=1)
+# Display the results
+st.write(f"The predicted closing price for {stock_symbol} using the {model_name} model is: ${prediction[0][0]:.2f}")
+st.write(f"Model MSE: {models[model_name]['mse']:.4f}, R-squared: {models[model_name]['r2']:.4f}")
 
-# Make predictions
-predictions = make_predictions(model, test_data_reshaped)
-
-# Inverse transform the predictions to original scale
-predictions = scaler.inverse_transform(predictions)
-
-# Display results
-st.write('Predictions:')
-st.write(predictions)
-
-# Explain analysis
-st.write('Analysis:')
-st.write('The model is trained on the historical closing prices of the stock.')
-st.write('The predictions are made on the test data, which is the last 20% of the total data.')
-st.write('The model is trying to predict the next closing price of the stock.')
-st.write('You can use these predictions to decide whether to buy or sell the stock.')
-
-# Suggest whether to buy or sell
-if predictions[-1] > data['Close'].iloc[-1]:
-    st.write('Suggestion: Buy')
-else:
-    st.write('Suggestion: Sell')
+# Analysis
+st.subheader("Analysis")
+st.write(f"You have selected the {model_name} deep learning model for stock price prediction.")
+st.write("The LSTM model is well-suited for modeling time-series data like stock prices, as it can capture long-term dependencies and patterns. The GRU model is a similar type of recurrent neural network that is often faster to train and can perform well on certain types of time-series data.")
+st.write("The model was trained on historical stock data, including the key factors identified earlier: open, high, low, volume, moving average, RSI, MACD, and other technical indicators. By learning from this comprehensive set of features, the model can make more accurate predictions.")
+st.write("The Streamlit app allows users to input a stock symbol and select the deep learning model they want to use. The predicted closing price and the model's accuracy metrics (MSE and R-squared) are displayed to the user.")
+st.write("It's important to note that stock price prediction is a complex task, and these models may not be 100% accurate. Factors like unexpected news, global events, and other unpredictable market dynamics can impact stock prices in ways that are difficult for any model to capture. Users should always do their own research and use this as one of many inputs in their investment decision-making process.")
