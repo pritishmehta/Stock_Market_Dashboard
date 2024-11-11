@@ -377,7 +377,7 @@ with indexes:
         fig.update_layout(title='Candlestick Chart',
                           yaxis_title='Price',
                           xaxis_title='Date')
-        st.plotly_chart(fig, use_container_width=True,key='chart112')
+        st.plotly_chart(fig, use_container_width=True,key=i)
     
 # In your main Streamlit app:
 with charts:
