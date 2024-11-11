@@ -313,7 +313,7 @@ with search:
                 # Display candlestick chart
                 st.subheader('Price Chart')
                 fig = plot_candlestick_chart(data, formatted_ticker)
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True,key='chart1')
             else:
                 st.error("Unable to fetch stock data. Please check the ticker symbol.")
         
@@ -340,7 +340,7 @@ with search:
                         st.subheader('Sentiment Analysis')
                         sentiment_graph = create_sentiment_graph(articles)
                         if sentiment_graph:
-                            st.plotly_chart(sentiment_graph, use_container_width=True)
+                            st.plotly_chart(sentiment_graph, use_container_width=True,key='chart2')
                         
                         # Calculate and display average sentiment
                         title_sentiments = [a['title_sentiment'] for a in articles if a['title_sentiment'] is not None]
@@ -377,7 +377,7 @@ with indexes:
         fig.update_layout(title='Candlestick Chart',
                           yaxis_title='Price',
                           xaxis_title='Date')
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True,key='chart3')
     
 # In your main Streamlit app:
 with charts:
@@ -429,7 +429,7 @@ with charts:
                                 fig.update_layout(title='Candlestick Chart',
                                                   yaxis_title='Price',
                                                   xaxis_title='Date')
-                                st.plotly_chart(fig, use_container_width=True)
+                                st.plotly_chart(fig, use_container_width=True,key='chart4')
                             else:
                                 st.write(f"No data available for {company_name} ({ticker})")
                         except Exception as e:
@@ -482,7 +482,7 @@ with charts:
                                 fig.update_layout(title='Candlestick Chart',
                                                   yaxis_title='Price',
                                                   xaxis_title='Date')
-                                st.plotly_chart(fig, use_container_width=True)
+                                st.plotly_chart(fig, use_container_width=True,key='char4')
                             else:
                                 st.write(f"No data available for {company_name} ({ticker})")
                         except Exception as e:
@@ -602,7 +602,7 @@ with sectors:
             xaxis_nticks=36
         )
 
-        st.plotly_chart(fig)
+        st.plotly_chart(fig,key='chart5')
 
         # Explanation of the correlation matrix
         st.write("""
@@ -674,7 +674,7 @@ with heatmap:
                         title='Stock Performance by Sector and Sub-Industry - NASDAQ 100',
                         hover_data=['Change', 'Company'])
         
-        st.plotly_chart(fig)
+        st.plotly_chart(fig,key='chart6')
 
     elif index_choice == "S&P 500":
         st.title('Stock Performance Visualization - S&P 500')
@@ -693,7 +693,7 @@ with heatmap:
                         color_continuous_scale='RdYlGn', 
                         title='Stock Performance by Sector and Sub-Industry - S&P 500',
                         hover_data=['Change', 'Security'])
-        st.plotly_chart(fig_0)
+        st.plotly_chart(fig_0,key='chart7')
 
     else:  # Dow Jones
         st.title('Stock Performance Visualization - Dow Jones')
@@ -711,7 +711,7 @@ with heatmap:
                         title='Stock Performance - Dow Jones',
                         hover_data=['% Change','Symbol'])
         
-        st.plotly_chart(fig_1)
+        st.plotly_chart(fig_1,key='chart8')
 with economic_indicators:
     
 # Function to get data from Yahoo Finance
@@ -836,7 +836,7 @@ with technical_analysis:
 
         # Technical Analysis Plot
         fig = plot_stock_data(df)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True,key='chart9')
 
         # Fundamental Metrics
         st.subheader('Fundamental Metrics')
