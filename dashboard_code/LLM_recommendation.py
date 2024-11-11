@@ -1,110 +1,92 @@
 import streamlit as st
-import yfinance as yf
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import StandardScaler
+import yfinance as yf
+from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, LSTM, Dropout, GRU
-from tensorflow.keras.optimizers import Adam
-from sklearn.metrics import mean_squared_error, r2_score
+from tensorflow.keras.layers import LSTM, Dense, Dropout
 
-# Function to fetch live stock data
-def get_live_data(symbol):
-    stock = yf.Ticker(symbol)
-    data = stock.history(period="1mo")
+# Function to load data
+def load_data(ticker):
+    data = yf.download(ticker, start="2010-01-01", end="2023-01-01")
     return data
 
-# Feature engineering
-def engineer_features(df):
-    df['moving_avg_30'] = df['Close'].rolling(window=30).mean()
-    df['rsi'] = calculate_rsi(df['Close'])
-    df['macd'], df['signal'], df['hist'] = calculate_macd(df['Close'])
-    return df
+# Function to preprocess data
+def preprocess_data(data):
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    scaled_data = scaler.fit_transform(data['Close'].values.reshape(-1, 1))
+    return scaled_data, scaler
 
-def calculate_rsi(prices, window=14):
-    delta = prices.diff()
-    gain = delta.where(delta > 0, 0)
-    loss = -delta.where(delta < 0, 0)
-    avg_gain = gain.rolling(window).mean()
-    avg_loss = loss.rolling(window).mean()
-    rs = avg_gain / avg_loss
-    rsi = 100 - (100 / (1 + rs))
-    return rsi
+# Function to create training and testing datasets
+def create_datasets(scaled_data):
+    train_size = int(len(scaled_data) * 0.8)
+    train_data = scaled_data[:train_size]
+    test_data = scaled_data[train_size:]
 
-def calculate_macd(prices, fast=12, slow=26, signal=9):
-    exp1 = prices.ewm(span=fast, adjust=False).mean()
-    exp2 = prices.ewm(span=slow, adjust=False).mean()
-    macd = exp1 - exp2
-    signal = macd.ewm(span=signal, adjust=False).mean()
-    hist = macd - signal
-    return macd, signal, hist
+    x_train, y_train = [], []
+    for i in range(60, len(train_data)):
+        x_train.append(train_data[i-60:i, 0])
+        y_train.append(train_data[i, 0])
+    
+    x_test, y_test = [], []
+    for i in range(60, len(test_data)):
+        x_test.append(test_data[i-60:i, 0])
+        y_test.append(test_data[i, 0])
+    
+    x_train, y_train = np.array(x_train), np.array(y_train)
+    x_test, y_test = np.array(x_test), np.array(y_test)
 
-# Define the models
-models = {
-    'LSTM': Sequential([
-        LSTM(64, input_shape=(9, 1), return_sequences=True),
-        Dropout(0.2),
-        LSTM(32),
-        Dropout(0.2),
-        Dense(1)
-    ]),
-    'GRU': Sequential([
-        GRU(64, input_shape=(9, 1), return_sequences=True),
-        Dropout(0.2),
-        GRU(32),
-        Dropout(0.2),
-        Dense(1)
-    ])
-}
+    x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
+    x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1))
 
-# Compile and train the models
-for name, model in models.items():
-    model.compile(optimizer=Adam(), loss='mean_squared_error')
-    
-    # Load and prepare the data
-    df = get_live_data('AAPL')
-    df = engineer_features(df)
-    X = df[['Open', 'High', 'Low', 'Volume', 'moving_avg_30', 'rsi', 'macd', 'signal', 'hist']]
-    y = df['Close']
-    
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-    
-    model.fit(X_scaled.reshape(X_scaled.shape[0], X_scaled.shape[1], 1), y, epochs=50, batch_size=32, verbose=0)
-    
-    # Evaluate the model
-    y_pred = model.predict(X_scaled.reshape(X_scaled.shape[0], X_scaled.shape[1], 1))
-    mse = mean_squared_error(y, y_pred)
-    r2 = r2_score(y, y_pred)
-    models[name]['mse'] = mse
-    models[name]['r2'] = r2
+    return x_train, y_train, x_test, y_test
+
+# Function to build LSTM model
+def build_model():
+    model = Sequential()
+    model.add(LSTM(units=50, return_sequences=True, input_shape=(60, 1)))
+    model.add(Dropout(0.2))
+    model.add(LSTM(units=50, return_sequences=False))
+    model.add(Dropout(0.2))
+    model.add(Dense(units=1))
+
+    model.compile(optimizer='adam', loss='mean_squared_error')
+    return model
+
+# Function to make predictions and evaluate the model
+def evaluate_model(model, x_test, y_test, scaler):
+    predictions = model.predict(x_test)
+    predictions = scaler.inverse_transform(predictions)
+    y_test = scaler.inverse_transform(y_test.reshape(-1, 1))
+
+    return predictions, y_test
+
+# Function to provide buy/sell recommendation
+def make_recommendation(predictions, y_test):
+    if predictions[-1] > y_test[-1]:
+        return "Buy"
+    else:
+        return "Sell"
 
 # Streamlit app
-st.title("Stock Price Prediction")
+st.title('Stock Price Prediction and Recommendation')
+ticker = st.text_input('Enter Stock Ticker', 'AAPL')
 
-# Get the stock symbol from the user
-stock_symbol = st.text_input("Enter the stock symbol:", "AAPL")
+if st.button('Analyze'):
+    data = load_data(ticker)
+    st.write(f"Data for {ticker}")
+    st.write(data.tail())
 
-# Get the model selection from the user
-model_name = st.selectbox("Select a deep learning model:", list(models.keys()))
-selected_model = models[model_name]['model']
+    scaled_data, scaler = preprocess_data(data)
+    x_train, y_train, x_test, y_test = create_datasets(scaled_data)
 
-# Fetch the latest stock data for the given symbol
-latest_data = get_live_data(stock_symbol)
-latest_data = engineer_features(latest_data)
-latest_data_scaled = scaler.transform(latest_data[['Open', 'High', 'Low', 'Volume', 'moving_avg_30', 'rsi', 'macd', 'signal', 'hist']].iloc[-1].to_frame().T)
+    model = build_model()
+    model.fit(x_train, y_train, epochs=1, batch_size=1)
 
-# Make the prediction
-prediction = selected_model.predict(latest_data_scaled.reshape(1, latest_data_scaled.shape[1], 1))
+    predictions, y_test = evaluate_model(model, x_test, y_test, scaler)
 
-# Display the results
-st.write(f"The predicted closing price for {stock_symbol} using the {model_name} model is: ${prediction[0][0]:.2f}")
-st.write(f"Model MSE: {models[model_name]['mse']:.4f}, R-squared: {models[model_name]['r2']:.4f}")
+    st.write("Predictions vs Actual")
+    st.line_chart(pd.DataFrame({'Actual': y_test.flatten(), 'Predictions': predictions.flatten()}))
 
-# Analysis
-st.subheader("Analysis")
-st.write(f"You have selected the {model_name} deep learning model for stock price prediction.")
-st.write("The LSTM and GRU models are well-suited for modeling time-series data like stock prices, as they can capture long-term dependencies and patterns.")
-st.write("The model was trained on live stock data, including the key features like open, high, low, volume, moving average, RSI, MACD, and other technical indicators. By learning from this comprehensive set of features, the model can make more accurate predictions.")
-st.write("The Streamlit app allows users to input a stock symbol and select the deep learning model they want to use. The predicted closing price and the model's accuracy metrics (MSE and R-squared) are displayed to the user.")
-st.write("It's important to note that stock price prediction is a complex task, and these models may not be 100% accurate. Factors like unexpected news, global events, and other unpredictable market dynamics can impact stock prices in ways that are difficult for any model to capture. Users should always do their own research and use this as one of many inputs in their investment decision-making process.")
+    recommendation = make_recommendation(predictions, y_test)
+    st.write(f"Recommendation: {recommendation}")
