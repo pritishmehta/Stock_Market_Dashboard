@@ -78,9 +78,12 @@ st.title('Stock Price Prediction and Recommendation')
 ticker = st.text_input('Enter Stock Ticker', 'AAPL')
 
 if st.button('Analyze'):
-    data = load_data(ticker)
-    st.write(f"Data for {ticker}")
-    st.write(data.tail())
+    data = yf.download(ticker, period='1y', interval = '1d')
+    st.write(data)
+    # Reset the index to remove the MultiIndex
+    data.reset_index(inplace=True)
+    # Assuming 'data' has a MultiIndex, drop the second level of the MultiIndex
+    data.columns = data.columns.droplevel(1)
 
     scaled_data, scaler = preprocess_data(data)
     x_train, y_train, x_test, y_test = create_datasets(scaled_data)
