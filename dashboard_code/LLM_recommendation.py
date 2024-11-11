@@ -1,5 +1,6 @@
 import requests
 import json
+import streamlit as st
 
 # Replace 'YOUR_API_KEY' with your actual Alpha Vantage API key
 api_key = 'RF4IK09DF7WCEVIT'
