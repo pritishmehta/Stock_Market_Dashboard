@@ -3,98 +3,84 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 from sklearn.preprocessing import MinMaxScaler
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout
+from sklearn.model_selection import train_test_split
+from keras.models import Sequential
+from keras.layers import Dense, LSTM, Dropout
 
 # Function to load data
-def load_data(ticker):
-    data = yf.download(ticker, period='1y', interval = '1d')
-    st.write(data)
-    # Reset the index to remove the MultiIndex
-    data.reset_index(inplace=True)
-    # Assuming 'data' has a MultiIndex, drop the second level of the MultiIndex
-    data.columns = data.columns.droplevel(1)
+def load_data(ticker, start_date, end_date):
+    data = yf.download(ticker, start=start_date, end=end_date)
     return data
 
-# Function to preprocess data
-def preprocess_data(data):
-    scaler = MinMaxScaler(feature_range=(0, 1))
-    scaled_data = scaler.fit_transform(data['Close'].values.reshape(-1, 1))
-    return scaled_data, scaler
+# Function to prepare data
+def prepare_data(data):
+    scaler = MinMaxScaler(feature_range=(0,1))
+    scaled_data = scaler.fit_transform(data['Close'].values.reshape(-1,1))
+    return scaled_data
 
-# Function to create training and testing datasets
-def create_datasets(scaled_data):
-    train_size = int(len(scaled_data) * 0.8)
-    train_data = scaled_data[:train_size]
-    test_data = scaled_data[train_size:]
-
-    x_train, y_train = [], []
-    for i in range(60, len(train_data)):
-        x_train.append(train_data[i-60:i, 0])
-        y_train.append(train_data[i, 0])
+# Function to create and train model
+def create_model(data):
+    x = []
+    y = []
+    for i in range(60, len(data)):
+        x.append(data[i-60:i, 0])
+        y.append(data[i, 0])
+    x, y = np.array(x), np.array(y)
+    x = np.reshape(x, (x.shape[0], x.shape[1], 1))
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
     
-    x_test, y_test = [], []
-    for i in range(60, len(test_data)):
-        x_test.append(test_data[i-60:i, 0])
-        y_test.append(test_data[i, 0])
-    
-    x_train, y_train = np.array(x_train), np.array(y_train)
-    x_test, y_test = np.array(x_test), np.array(y_test)
-
-    x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
-    x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1))
-
-    return x_train, y_train, x_test, y_test
-
-# Function to build LSTM model
-def build_model():
     model = Sequential()
-    model.add(LSTM(units=50, return_sequences=True, input_shape=(60, 1)))
-    model.add(Dropout(0.2))
-    model.add(LSTM(units=50, return_sequences=False))
-    model.add(Dropout(0.2))
-    model.add(Dense(units=1))
-
+    model.add(LSTM(50, return_sequences=True, input_shape=(x.shape[1], 1)))
+    model.add(LSTM(50, return_sequences=False))
+    model.add(Dense(25))
+    model.add(Dense(1))
+    
     model.compile(optimizer='adam', loss='mean_squared_error')
-    return model
+    model.fit(x_train, y_train, batch_size=1, epochs=1)
+    
+    return model, x_test, y_test
 
-# Function to make predictions and evaluate the model
-def evaluate_model(model, x_test, y_test, scaler):
+# Function to make predictions
+def make_predictions(model, x_test):
     predictions = model.predict(x_test)
-    predictions = scaler.inverse_transform(predictions)
-    y_test = scaler.inverse_transform(y_test.reshape(-1, 1))
+    return predictions
 
-    return predictions, y_test
-
-# Function to provide buy/sell recommendation
-def make_recommendation(predictions, y_test):
-    if predictions[-1] > y_test[-1]:
-        return "Buy"
-    else:
-        return "Sell"
+# Function to evaluate model
+def evaluate_model(y_test, predictions):
+    accuracy = np.sqrt(np.mean((predictions - y_test) ** 2))
+    return accuracy
 
 # Streamlit app
-st.title('Stock Price Prediction and Recommendation')
-ticker = st.text_input('Enter Stock Ticker', 'AAPL')
+st.title('Stock Price Prediction using LSTM')
 
-if st.button('Analyze'):
-    data = yf.download(ticker, period='1y', interval = '1d')
-    st.write(data)
-    # Reset the index to remove the MultiIndex
-    data.reset_index(inplace=True)
-    # Assuming 'data' has a MultiIndex, drop the second level of the MultiIndex
-    data.columns = data.columns.droplevel(1)
+st.sidebar.header('Select Stock and Date Range')
+ticker = st.sidebar.text_input('Enter Stock Ticker', 'AAPL')
+start_date = st.sidebar.date_input('Start Date', value=pd.to_datetime('2020-01-01'))
+end_date = st.sidebar.date_input('End Date', value=pd.to_datetime('2022-02-26'))
 
-    scaled_data, scaler = preprocess_data(data)
-    x_train, y_train, x_test, y_test = create_datasets(scaled_data)
+if st.sidebar.button('Load Data'):
+    data = load_data(ticker, start_date, end_date)
+    st.write(data.head())
 
-    model = build_model()
-    model.fit(x_train, y_train, epochs=1, batch_size=1)
+if st.sidebar.button('Prepare Data'):
+    scaled_data = prepare_data(data)
+    st.write(scaled_data)
 
-    predictions, y_test = evaluate_model(model, x_test, y_test, scaler)
+if st.sidebar.button('Create and Train Model'):
+    model, x_test, y_test = create_model(scaled_data)
+    st.write('Model Created and Trained')
 
-    st.write("Predictions vs Actual")
-    st.line_chart(pd.DataFrame({'Actual': y_test.flatten(), 'Predictions': predictions.flatten()}))
+if st.sidebar.button('Make Predictions'):
+    predictions = make_predictions(model, x_test)
+    st.write(predictions)
 
-    recommendation = make_recommendation(predictions, y_test)
-    st.write(f"Recommendation: {recommendation}")
+if st.sidebar.button('Evaluate Model'):
+    accuracy = evaluate_model(y_test, predictions)
+    st.write('Model Accuracy: ', accuracy)
+
+# Stock worth buying
+if st.sidebar.button('Stock Worth Buying'):
+    if accuracy < 10:
+        st.write('Stock is worth buying')
+    else:
+        st.write('Stock is not worth buying')
