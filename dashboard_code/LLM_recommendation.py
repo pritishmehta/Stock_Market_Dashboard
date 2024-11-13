@@ -38,12 +38,12 @@ for i in range(len(df)):
     news_sentiment = 0
     for article in news["articles"]:
         article_date = datetime.datetime.strptime(article["publishedAt"], "%Y-%m-%dT%H:%M:%SZ")
-        article_date = article_date.replace(tzinfo=pytz.UTC)  # Make article_date offset-aware
+        article_date = article_date.replace(tzinfo=None)  # Make article_date offset-naive
         df_index_date = df.index[i].to_pydatetime()  # Convert pandas Timestamp to datetime
-        df_index_date = df_index_date.replace(tzinfo=pytz.UTC)  # Make df_index_date offset-aware
         if article_date < df_index_date:
             news_sentiment += article["sentiment"]
     df.loc[i, "News_Sentiment"] = news_sentiment
+
 
 # Create the training and testing data
 X = df[["Open", "High", "Low", "Close", "MA_50", "MA_200", "News_Sentiment"]]
