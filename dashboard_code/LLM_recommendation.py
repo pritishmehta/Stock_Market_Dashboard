@@ -31,6 +31,7 @@ def prepare_data(data):
     training_data_len = int(np.ceil(len(dataset) * .95))
     scaler = MinMaxScaler(feature_range=(0, 1))
     scaled_data = scaler.fit_transform(dataset)
+    
     train_data = scaled_data[0:int(training_data_len), :]
     x_train = []
     y_train = []
@@ -39,10 +40,11 @@ def prepare_data(data):
         y_train.append(train_data[i, 0])
     x_train, y_train = np.array(x_train), np.array(y_train)
     x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
-    return x_train, y_train, scaler, training_data_len
+    
+    return x_train, y_train, scaler, training_data_len, scaled_data, dataset
 
 # Function to predict stock prices
-def predict_stock(model, data, scaler, training_data_len):
+def predict_stock(model, scaled_data, scaler, training_data_len, dataset):
     test_data = scaled_data[training_data_len - 60:, :]
     x_test = []
     y_test = dataset[training_data_len:, :]
@@ -68,12 +70,12 @@ st.subheader('Historical Stock Data')
 st.write(data.tail())
 
 # Train LSTM model
-x_train, y_train, scaler, training_data_len = prepare_data(data)
+x_train, y_train, scaler, training_data_len, scaled_data, dataset = prepare_data(data)
 model = create_model()
 model.fit(x_train, y_train, batch_size=1, epochs=1)
 
 # Predict stock prices
-predictions, y_test = predict_stock(model, data, scaler, training_data_len)
+predictions, y_test = predict_stock(model, scaled_data, scaler, training_data_len, dataset)
 st.subheader('Predicted vs Actual Stock Prices')
 st.line_chart({'Actual': y_test.flatten(), 'Predicted': predictions.flatten()})
 
