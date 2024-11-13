@@ -36,7 +36,7 @@ df["News_Sentiment"] = 0
 for i in range(len(df)):
     news_sentiment = 0
     for article in news["articles"]:
-        article_date = datetime.strptime(article["publishedAt"], "%Y-%m-%dT%H:%M:%SZ")
+        article_date = datetime.datetime.strptime(article["publishedAt"], "%Y-%m-%dT%H:%M:%SZ")
         if article_date < df.index[i]:
             news_sentiment += article["sentiment"]
     df.loc[i, "News_Sentiment"] = news_sentiment
