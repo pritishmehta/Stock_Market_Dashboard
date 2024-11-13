@@ -9,6 +9,7 @@ from sklearn.model_selection import train_test_split
 import numpy as np
 import matplotlib.pyplot as plt
 import datetime
+import pytz
 
 # Set up the Streamlit app
 st.title("Stock Price Prediction")
@@ -37,7 +38,10 @@ for i in range(len(df)):
     news_sentiment = 0
     for article in news["articles"]:
         article_date = datetime.datetime.strptime(article["publishedAt"], "%Y-%m-%dT%H:%M:%SZ")
-        if article_date < df.index[i]:
+        article_date = article_date.replace(tzinfo=pytz.UTC)  # Make article_date offset-aware
+        df_index_date = df.index[i].to_pydatetime()  # Convert pandas Timestamp to datetime
+        df_index_date = df_index_date.replace(tzinfo=pytz.UTC)  # Make df_index_date offset-aware
+        if article_date < df_index_date:
             news_sentiment += article["sentiment"]
     df.loc[i, "News_Sentiment"] = news_sentiment
 
