@@ -10,89 +10,92 @@ import numpy as np
 import matplotlib.pyplot as plt
 import datetime
 import pytz
+from dateutil import parser
 
 # Set up the Streamlit app
 st.title("Stock Price Prediction")
 
-# Get user input for stock ticker
-st.header("Enter a stock ticker")
-stock_ticker = st.text_input("Stock Ticker", value="AAPL")
+# **Data Retrieval**
+def retrieve_stock_data(ticker_symbol, start_date, end_date):
+    try:
+        data = yf.download(ticker_symbol, start=start_date, end=end_date)
+        return data
+    except Exception as e:
+        st.error(f"Error retrieving stock data: {str(e)}")
+        return None
 
-# Get historical data for the stock
-data = yf.download(stock_ticker, start="2010-01-01", end="2022-02-26")
+def retrieve_news_data(api_key, ticker_symbol):
+    try:
+        newsapi = NewsApiClient(api_key=api_key)
+        news = newsapi.get_everything(q=ticker_symbol, language="en")
+        return news
+    except Exception as e:
+        st.error(f"Error retrieving news data: {str(e)}")
+        return None
 
-# Get news data for the stock
-newsapi = NewsApiClient(api_key="6a04a3e5224f48b1af4938da6251d466")
-news = newsapi.get_everything(q=stock_ticker, language="en")
-
-# Create a dataframe with the historical data
-df = pd.DataFrame(data)
-
-# Add a column for the moving average
-df["MA_50"] = df["Close"].rolling(window=50).mean()
-df["MA_200"] = df["Close"].rolling(window=200).mean()
-
-# Create a column for the news sentiment
-df["News_Sentiment"] = 0
-for i in range(len(df)):
-    news_sentiment = 0
-    for article in news["articles"]:
-        article_date = datetime.datetime.strptime(article["publishedAt"], "%Y-%m-%dT%H:%M:%SZ")
-        article_date = article_date.replace(tzinfo=None)  # Make article_date offset-naive
-        df_index_date = df.index[i].to_pydatetime()  # Convert pandas Timestamp to datetime
-        if article_date < df_index_date:
-            news_sentiment += article["sentiment"]
-    df.loc[i, "News_Sentiment"] = news_sentiment
-
-
-df['Date'] = df.index.to_pydatetime()
-X = df[["Open", "High", "Low", "Close", "MA_50", "MA_200", "News_Sentiment", "Date"]]
-y = df["Close"].shift(-1)
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-scaler = MinMaxScaler()
-X_train_scaled = scaler.fit_transform(X_train.drop('Date', axis=1))
-X_test_scaled = scaler.transform(X_test.drop('Date', axis=1))
-# Create the LSTM model
-model = Sequential()
-model.add(LSTM(50, input_shape=(X_train.shape[1], 1)))
-model.add(Dense(1))
-model.compile(loss="mean_squared_error", optimizer="adam")
-
-# Train the model
-model.fit(X_train_scaled, y_train, epochs=50, batch_size=32, verbose=2)
-
-# Make predictions
-predictions = model.predict(X_test_scaled)
-
-# Plot the results
-st.header("Predictions")
-fig, ax = plt.subplots()
-ax.plot(y_test)
-ax.plot(predictions)
-ax.legend(["Actual", "Predicted"])
-st.pyplot(fig)
-
-# Suggest buying or selling based on the predictions
-if predictions[-1] > y_test[-1]:
-    st.write("Buy")
-else:
-    st.write("Sell")
-
-# Add a button to retrain the model
-if st.button("Retrain Model"):
-    model.fit(X_train_scaled, y_train, epochs=50, batch_size=32, verbose=2)
-    predictions = model.predict(X_test_scaled)
-    st.write("Model retrained")
-
-# Add a button to update the data
-if st.button("Update Data"):
-    data = yf.download(stock_ticker, start="2010-01-01", end="2022-02-26")
+# **Data Processing**
+def process_stock_data(data):
     df = pd.DataFrame(data)
-    X = df[["Open", "High", "Low", "Close", "MA_50", "MA_200", "News_Sentiment"]]
-    y = df["Close"].shift(-1)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    scaler = MinMaxScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
-    st.write("Data updated")
+    df["MA_50"] = df["Close"].rolling(window=50).mean()
+    df["MA_200"] = df["Close"].rolling(window=200).mean()
+    return df
+
+def process_news_data(news, df):
+    df["News_Sentiment"] = 0
+    for i in range(len(df)):
+        news_sentiment = 0
+        for article in news["articles"]:
+            article_date = parser.isoparse(article["publishedAt"])
+            article_date_utc = article_date.astimezone(pytz.UTC)
+            df_index_date_utc = df.index[i].to_pydatetime().replace(tzinfo=pytz.UTC).astimezone(pytz.UTC)
+            if article_date_utc < df_index_date_utc:
+                news_sentiment += article["description"]  # Temporary sentiment scoring (TO DO: improve)
+        df.loc[i, "News_Sentiment"] = news_sentiment
+    return df
+
+# **Modeling**
+def create_lstm_model(X_train_scaled):
+    model = Sequential()
+    model.add(LSTM(50, input_shape=(X_train_scaled.shape[1], 1)))
+    model.add(Dense(1))
+    model.compile(loss="mean_squared_error", optimizer="adam")
+    return model
+
+def train_model(model, X_train_scaled, y_train):
+    try:
+        model.fit(X_train_scaled, y_train, epochs=50, batch_size=32, verbose=2)
+        return model
+    except Exception as e:
+        st.error(f"Error training model: {str(e)}")
+        return None
+
+# **Visualization**
+def visualize_predictions(y_test, predictions):
+    fig, ax = plt.subplots()
+    ax.plot(y_test)
+    ax.plot(predictions)
+    ax.legend(["Actual", "Predicted"])
+    ax.set_title("Actual vs. Predicted Stock Prices")
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Stock Price")
+    st.pyplot(fig)
+
+# **Main App**
+def main():
+    # User input
+    ticker_symbol = st.text_input("Enter a stock ticker symbol", value="AAPL")
+    api_key = "6a04a3e5224f48b1af4938da6251d466"  # Replace with your News API key
+    start_date = "2010-01-01"
+    end_date = datetime.date.today().strftime("%Y-%m-%d")
+
+    # Data retrieval
+    data = retrieve_stock_data(ticker_symbol, start_date, end_date)
+    news = retrieve_news_data(api_key, ticker_symbol)
+
+    if data is not None and news is not None:
+        # Data processing
+        df = process_stock_data(data)
+        df = process_news_data(news, df)
+
+        # Feature scaling and splitting
+        X = df[["Open", "High", "Low", "Close", "MA_50", "MA_200", "News_Sentiment"]]
