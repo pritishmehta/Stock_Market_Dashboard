@@ -45,14 +45,14 @@ for i in range(len(df)):
     df.loc[i, "News_Sentiment"] = news_sentiment
 
 
-df['Date'] = df.index.map(lambda x: x.replace(tzinfo=None).timestamp())
+df['Date'] = df.index.to_pydatetime()
 X = df[["Open", "High", "Low", "Close", "MA_50", "MA_200", "News_Sentiment", "Date"]]
 y = df["Close"].shift(-1)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 scaler = MinMaxScaler()
-X_train_scaled = scaler.fit_transform(X_train)
-X_test_scaled = scaler.transform(X_test)
+X_train_scaled = scaler.fit_transform(X_train.drop('Date', axis=1))
+X_test_scaled = scaler.transform(X_test.drop('Date', axis=1))
 # Create the LSTM model
 model = Sequential()
 model.add(LSTM(50, input_shape=(X_train.shape[1], 1)))
