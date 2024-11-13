@@ -11,7 +11,10 @@ from transformers import pipeline
 # Function to load stock data
 def load_data(ticker):
     data = yf.download(ticker, start="2010-01-01", end="2023-01-01")
+    # Reset the index to remove the MultiIndex
     data.reset_index(inplace=True)
+    # Assuming 'data' has a MultiIndex, drop the second level of the MultiIndex
+    data.columns = data.columns.droplevel(1)
     return data
 
 # Function to create LSTM model
