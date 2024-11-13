@@ -1,101 +1,74 @@
 import streamlit as st
 import yfinance as yf
-import pandas as pd
-from newsapi import NewsApiClient
+import nltk
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from keras.models import Sequential
-from keras.layers import Dense, LSTM
+from keras.layers import Dense
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
+import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import datetime
-import pytz
-from dateutil import parser
 
 # Set up the Streamlit app
-st.title("Stock Price Prediction")
+st.title("Stock Recommendation App")
 
-# **Data Retrieval**
-def retrieve_stock_data(ticker_symbol, start_date, end_date):
-    try:
-        data = yf.download(ticker_symbol, start=start_date, end=end_date)
-        return data
-    except Exception as e:
-        st.error(f"Error retrieving stock data: {str(e)}")
-        return None
+# Define a function to fetch historical stock data
+def fetch_historical_data(ticker, period):
+    data = yf.download(ticker, period=period)
+    return data
 
-def retrieve_news_data(api_key, ticker_symbol):
-    try:
-        newsapi = NewsApiClient(api_key=api_key)
-        news = newsapi.get_everything(q=ticker_symbol, language="en")
-        return news
-    except Exception as e:
-        st.error(f"Error retrieving news data: {str(e)}")
-        return None
+# Define a function to perform sentiment analysis on news
+def sentiment_analysis(news):
+    sia = SentimentIntensityAnalyzer()
+    sentiment = sia.polarity_scores(news)
+    return sentiment
 
-# **Data Processing**
-def process_stock_data(data):
-    df = pd.DataFrame(data)
-    df["MA_50"] = df["Close"].rolling(window=50).mean()
-    df["MA_200"] = df["Close"].rolling(window=200).mean()
-    return df
-
-def process_news_data(news, df):
-    df["News_Sentiment"] = 0
-    for i in range(len(df)):
-        news_sentiment = 0
-        for article in news["articles"]:
-            article_date = parser.isoparse(article["publishedAt"])
-            article_date_utc = article_date.astimezone(pytz.UTC)
-            df_index_date_utc = df.index[i].to_pydatetime().replace(tzinfo=pytz.UTC).astimezone(pytz.UTC)
-            if article_date_utc < df_index_date_utc:
-                news_sentiment += article["description"]  # Temporary sentiment scoring (TO DO: improve)
-        df.loc[i, "News_Sentiment"] = news_sentiment
-    return df
-
-# **Modeling**
-def create_lstm_model(X_train_scaled):
+# Define a function to build and train a neural network
+def build_neural_network(X_train, y_train):
     model = Sequential()
-    model.add(LSTM(50, input_shape=(X_train_scaled.shape[1], 1)))
+    model.add(Dense(64, activation='relu', input_shape=(X_train.shape[1],)))
+    model.add(Dense(32, activation='relu'))
     model.add(Dense(1))
-    model.compile(loss="mean_squared_error", optimizer="adam")
+    model.compile(optimizer='adam', loss='mean_squared_error')
+    model.fit(X_train, y_train, epochs=50, batch_size=32, verbose=0)
     return model
 
-def train_model(model, X_train_scaled, y_train):
-    try:
-        model.fit(X_train_scaled, y_train, epochs=50, batch_size=32, verbose=2)
-        return model
-    except Exception as e:
-        st.error(f"Error training model: {str(e)}")
-        return None
+# Define a function to make predictions using the neural network
+def make_predictions(model, X_test):
+    predictions = model.predict(X_test)
+    return predictions
 
-# **Visualization**
-def visualize_predictions(y_test, predictions):
-    fig, ax = plt.subplots()
-    ax.plot(y_test)
-    ax.plot(predictions)
-    ax.legend(["Actual", "Predicted"])
-    ax.set_title("Actual vs. Predicted Stock Prices")
-    ax.set_xlabel("Time")
-    ax.set_ylabel("Stock Price")
-    st.pyplot(fig)
+# Fetch historical data for a given stock
+ticker = st.text_input("Enter stock ticker")
+period = st.selectbox("Select period", ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"])
+data = fetch_historical_data(ticker, period)
 
-# **Main App**
-def main():
-    # User input
-    ticker_symbol = st.text_input("Enter a stock ticker symbol", value="AAPL")
-    api_key = "6a04a3e5224f48b1af4938da6251d466"  # Replace with your News API key
-    start_date = "2010-01-01"
-    end_date = datetime.date.today().strftime("%Y-%m-%d")
+# Perform sentiment analysis on news
+news = st.text_input("Enter news article")
+sentiment = sentiment_analysis(news)
 
-    # Data retrieval
-    data = retrieve_stock_data(ticker_symbol, start_date, end_date)
-    news = retrieve_news_data(api_key, ticker_symbol)
+# Prepare data for neural network
+data['Sentiment'] = sentiment['compound']
+X = data.drop(['Close'], axis=1)
+y = data['Close']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+scaler = MinMaxScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
 
-    if data is not None and news is not None:
-        # Data processing
-        df = process_stock_data(data)
-        df = process_news_data(news, df)
+# Build and train neural network
+model = build_neural_network(X_train, y_train)
 
-        # Feature scaling and splitting
-        X = df[["Open", "High", "Low", "Close", "MA_50", "MA_200", "News_Sentiment"]]
+# Make predictions using neural network
+predictions = make_predictions(model, X_test)
+
+# Display results
+st.write(" Historical Data:")
+st.write(data)
+st.write("Sentiment Analysis:")
+st.write(sentiment)
+st.write("Neural Network Predictions:")
+st.write(predictions)
+
+# Explain the analysis
+st.write("The historical data shows the past performance of the stock. The sentiment analysis of the news article provides an indication of the market sentiment towards the stock. The neural network predictions are based on the historical data and sentiment analysis, and provide a forecast of the stock's future performance.")
