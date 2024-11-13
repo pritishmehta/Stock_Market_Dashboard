@@ -17,3 +17,4 @@ statsmodels
 seaborn
 arch
 pytz
+transformers 
