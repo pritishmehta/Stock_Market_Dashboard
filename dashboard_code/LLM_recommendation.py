@@ -45,13 +45,10 @@ for i in range(len(df)):
     df.loc[i, "News_Sentiment"] = news_sentiment
 
 
-X = df[["Open", "High", "Low", "Close", "MA_50", "MA_200", "News_Sentiment"]]
+df['Date'] = df.index.map(lambda x: x.replace(tzinfo=None).timestamp())
+X = df[["Open", "High", "Low", "Close", "MA_50", "MA_200", "News_Sentiment", "Date"]]
 y = df["Close"].shift(-1)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-# Add the following lines here
-X_train['Date'] = X_train.index.map(lambda x: x.timestamp())
-X_test['Date'] = X_test.index.map(lambda x: x.timestamp())
 
 scaler = MinMaxScaler()
 X_train_scaled = scaler.fit_transform(X_train)
