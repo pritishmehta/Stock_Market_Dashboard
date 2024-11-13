@@ -1,74 +1,89 @@
 import streamlit as st
 import yfinance as yf
-import nltk
-from nltk.sentiment.vader import SentimentIntensityAnalyzer
-from keras.models import Sequential
-from keras.layers import Dense
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import train_test_split
 import pandas as pd
 import numpy as np
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense
+from transformers import pipeline
 
-# Set up the Streamlit app
-st.title("Stock Recommendation App")
-
-# Define a function to fetch historical stock data
-def fetch_historical_data(ticker, period):
-    data = yf.download(ticker, period=period)
+# Function to load stock data
+def load_data(ticker):
+    data = yf.download(ticker, start="2010-01-01", end="2023-01-01")
+    data.reset_index(inplace=True)
     return data
 
-# Define a function to perform sentiment analysis on news
-def sentiment_analysis(news):
-    sia = SentimentIntensityAnalyzer()
-    sentiment = sia.polarity_scores(news)
-    return sentiment
-
-# Define a function to build and train a neural network
-def build_neural_network(X_train, y_train):
+# Function to create LSTM model
+def create_model():
     model = Sequential()
-    model.add(Dense(64, activation='relu', input_shape=(X_train.shape[1],)))
-    model.add(Dense(32, activation='relu'))
+    model.add(LSTM(50, return_sequences=True, input_shape=(60, 1)))
+    model.add(LSTM(50, return_sequences=False))
+    model.add(Dense(25))
     model.add(Dense(1))
     model.compile(optimizer='adam', loss='mean_squared_error')
-    model.fit(X_train, y_train, epochs=50, batch_size=32, verbose=0)
     return model
 
-# Define a function to make predictions using the neural network
-def make_predictions(model, X_test):
-    predictions = model.predict(X_test)
-    return predictions
+# Function to prepare data for LSTM
+def prepare_data(data):
+    data = data.filter(['Close'])
+    dataset = data.values
+    training_data_len = int(np.ceil(len(dataset) * .95))
+    scaler = MinMaxScaler(feature_range=(0, 1))
+    scaled_data = scaler.fit_transform(dataset)
+    train_data = scaled_data[0:int(training_data_len), :]
+    x_train = []
+    y_train = []
+    for i in range(60, len(train_data)):
+        x_train.append(train_data[i-60:i, 0])
+        y_train.append(train_data[i, 0])
+    x_train, y_train = np.array(x_train), np.array(y_train)
+    x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
+    return x_train, y_train, scaler, training_data_len
 
-# Fetch historical data for a given stock
-ticker = st.text_input("Enter stock ticker")
-period = st.selectbox("Select period", ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"])
-data = fetch_historical_data(ticker, period)
+# Function to predict stock prices
+def predict_stock(model, data, scaler, training_data_len):
+    test_data = scaled_data[training_data_len - 60:, :]
+    x_test = []
+    y_test = dataset[training_data_len:, :]
+    for i in range(60, len(test_data)):
+        x_test.append(test_data[i-60:i, 0])
+    x_test = np.array(x_test)
+    x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1))
+    predictions = model.predict(x_test)
+    predictions = scaler.inverse_transform(predictions)
+    return predictions, y_test
 
-# Perform sentiment analysis on news
-news = st.text_input("Enter news article")
-sentiment = sentiment_analysis(news)
+# Function to analyze news sentiment
+def analyze_sentiment(news):
+    sentiment_pipeline = pipeline("sentiment-analysis")
+    sentiments = sentiment_pipeline(news)
+    return sentiments
 
-# Prepare data for neural network
-data['Sentiment'] = sentiment['compound']
-X = data.drop(['Close'], axis=1)
-y = data['Close']
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-scaler = MinMaxScaler()
-X_train = scaler.fit_transform(X_train)
-X_test = scaler.transform(X_test)
+# Streamlit app
+st.title('Stock Recommendation System')
+ticker = st.text_input('Enter Stock Ticker', 'AAPL')
+data = load_data(ticker)
+st.subheader('Historical Stock Data')
+st.write(data.tail())
 
-# Build and train neural network
-model = build_neural_network(X_train, y_train)
+# Train LSTM model
+x_train, y_train, scaler, training_data_len = prepare_data(data)
+model = create_model()
+model.fit(x_train, y_train, batch_size=1, epochs=1)
 
-# Make predictions using neural network
-predictions = make_predictions(model, X_test)
+# Predict stock prices
+predictions, y_test = predict_stock(model, data, scaler, training_data_len)
+st.subheader('Predicted vs Actual Stock Prices')
+st.line_chart({'Actual': y_test.flatten(), 'Predicted': predictions.flatten()})
 
-# Display results
-st.write(" Historical Data:")
-st.write(data)
-st.write("Sentiment Analysis:")
-st.write(sentiment)
-st.write("Neural Network Predictions:")
-st.write(predictions)
+# News sentiment analysis
+news = ["Apple's new product launch is expected to boost sales.", "Concerns over Apple's supply chain issues."]
+sentiments = analyze_sentiment(news)
+st.subheader('News Sentiment Analysis')
+st.write(sentiments)
 
-# Explain the analysis
-st.write("The historical data shows the past performance of the stock. The sentiment analysis of the news article provides an indication of the market sentiment towards the stock. The neural network predictions are based on the historical data and sentiment analysis, and provide a forecast of the stock's future performance.")
+# Recommendation logic (simplified)
+if sentiments[0]['label'] == 'POSITIVE' and predictions[-1] > y_test[-1]:
+    st.write("Strong Buy Recommendation for", ticker)
+else:
+    st.write("No Strong Buy Recommendation for", ticker)
