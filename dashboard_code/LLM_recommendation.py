@@ -1,95 +1,150 @@
-import streamlit as st
+# prompt: draft a python code to get all the news and historical data for a stock that user inputs
+
 import yfinance as yf
 import pandas as pd
-import numpy as np
+from newsapi import NewsApiClient
+
+def get_stock_data(ticker, period="5y"):
+    """
+    Fetches historical stock data and news sentiment.
+
+    Args:
+        ticker: The stock ticker symbol (e.g., "AAPL").
+        period: The period for historical data (default: "5y").
+
+    Returns:
+        A tuple containing:
+        - historical_data: A pandas DataFrame of historical stock data.
+        - sentiment: A dictionary containing sentiment scores.
+        - news_articles: A list of news articles.
+        Or None if an error occurs.
+    """
+    try:
+        # Fetch historical data
+        historical_data = yf.download(ticker, period=period)
+
+        # Fetch news data (replace with your actual API key)
+        news_api_key = '6a04a3e5224f48b1af4938da6251d466'  
+        newsapi = NewsApiClient(api_key=news_api_key)
+        news = newsapi.get_everything(q=ticker, language='en', sort_by='relevancy')
+        news_articles = news['articles']
+
+        # Perform sentiment analysis (example using the first article's title)
+        if news_articles:
+          from nltk.sentiment.vader import SentimentIntensityAnalyzer
+          sia = SentimentIntensityAnalyzer()
+          sentiment = sia.polarity_scores(news_articles[0]['title'])
+        else:
+          sentiment = {'neg': 0, 'neu': 0, 'pos': 0, 'compound': 0}
+
+
+        return historical_data, sentiment, news_articles
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
+
+if __name__ == "__main__":
+    ticker_symbol = input("Enter the stock ticker symbol: ")
+    stock_info = get_stock_data(ticker_symbol)
+
+    if stock_info:
+        historical_data, sentiment, news_articles = stock_info
+        print("\nHistorical Data:")
+        print(historical_data)
+        print("\nSentiment Analysis:")
+        print(sentiment)
+        print("\nNews Articles:")
+        for article in news_articles:
+            print(article['title'])
+
+# prompt: based on the above code use deep learning to analyse the news and historical data to recommend buying or selling the stock
+
+import yfinance as yf
+import plotly.graph_objects as go
+import pandas as pd
+from newsapi import NewsApiClient
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from sklearn.preprocessing import MinMaxScaler
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense
-from transformers import pipeline
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+import numpy as np
+import matplotlib.pyplot as plt
+from keras.models import Sequential
+from keras.layers import LSTM, Dense
 
-# Function to load stock data
-def load_data(ticker):
-    data = yf.download(ticker, start="2010-01-01", end="2023-01-01")
-    # Reset the index to remove the MultiIndex
-    data.reset_index(inplace=True)
-    # Assuming 'data' has a MultiIndex, drop the second level of the MultiIndex
-    data.columns = data.columns.droplevel(1)
-    return data
+# ... (your existing code for fetching data, sentiment analysis, etc.)
 
-# Function to create LSTM model
-def create_model():
+def build_and_train_model(X_train, y_train):
     model = Sequential()
-    model.add(LSTM(50, return_sequences=True, input_shape=(60, 1)))
+    model.add(LSTM(50, return_sequences=True, input_shape=(X_train.shape[1], 1)))
     model.add(LSTM(50, return_sequences=False))
     model.add(Dense(25))
     model.add(Dense(1))
     model.compile(optimizer='adam', loss='mean_squared_error')
+    model.fit(X_train, y_train, batch_size=1, epochs=1) # Reduced epochs for faster execution in this example
     return model
 
-# Function to prepare data for LSTM
-def prepare_data(data):
-    data = data.filter(['Close'])
-    dataset = data.values
-    training_data_len = int(np.ceil(len(dataset) * .95))
-    scaler = MinMaxScaler(feature_range=(0, 1))
-    scaled_data = scaler.fit_transform(dataset)
-    
-    train_data = scaled_data[0:int(training_data_len), :]
-    x_train = []
-    y_train = []
-    for i in range(60, len(train_data)):
-        x_train.append(train_data[i-60:i, 0])
-        y_train.append(train_data[i, 0])
-    x_train, y_train = np.array(x_train), np.array(y_train)
-    x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
-    
-    return x_train, y_train, scaler, training_data_len, scaled_data, dataset
 
-# Function to predict stock prices
-def predict_stock(model, scaled_data, scaler, training_data_len, dataset):
-    test_data = scaled_data[training_data_len - 60:, :]
-    x_test = []
-    y_test = dataset[training_data_len:, :]
-    for i in range(60, len(test_data)):
-        x_test.append(test_data[i-60:i, 0])
-    x_test = np.array(x_test)
-    x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1))
-    predictions = model.predict(x_test)
-    predictions = scaler.inverse_transform(predictions)
-    return predictions, y_test
+if __name__ == "__main__":
+    ticker_symbol = input("Enter the stock ticker symbol: ")
+    stock_info = get_stock_data(ticker_symbol)
 
-# Function to analyze news sentiment
-def analyze_sentiment(news):
-    sentiment_pipeline = pipeline("sentiment-analysis")
-    sentiments = sentiment_pipeline(news)
-    return sentiments
+    if stock_info:
+        historical_data, sentiment, news_articles = stock_info
 
-# Streamlit app
-st.title('Stock Recommendation System')
-ticker = st.text_input('Enter Stock Ticker', 'AAPL')
-data = load_data(ticker)
-st.subheader('Historical Stock Data')
-st.write(data.tail())
+        # Data preprocessing for LSTM
+        data = historical_data['Close'].values.reshape(-1, 1)
+        scaler = MinMaxScaler(feature_range=(0, 1))
+        data = scaler.fit_transform(data)
+        train_size = int(len(data) * 0.8)
+        train_data = data[:train_size]
+        test_data = data[train_size:]
 
-# Train LSTM model
-x_train, y_train, scaler, training_data_len, scaled_data, dataset = prepare_data(data)
-model = create_model()
-model.fit(x_train, y_train, batch_size=1, epochs=1)
+        # Create sequences for LSTM
+        def create_sequences(data, seq_length):
+            xs = []
+            ys = []
+            for i in range(len(data)-seq_length-1):
+                x = data[i:(i+seq_length)]
+                y = data[i+seq_length]
+                xs.append(x)
+                ys.append(y)
+            return np.array(xs), np.array(ys)
 
-# Predict stock prices
-predictions, y_test = predict_stock(model, scaled_data, scaler, training_data_len, dataset)
-st.subheader('Predicted vs Actual Stock Prices')
-st.line_chart({'Actual': y_test.flatten(), 'Predicted': predictions.flatten()})
+        seq_length = 50 # Example sequence length
+        X_train, y_train = create_sequences(train_data, seq_length)
+        X_test, y_test = create_sequences(test_data, seq_length)
 
-# News sentiment analysis
-news = ["Apple's new product launch is expected to boost sales.", "Concerns over Apple's supply chain issues."]
-sentiments = analyze_sentiment(news)
-st.subheader('News Sentiment Analysis')
-st.write(sentiments)
 
-# Recommendation logic (simplified)
-if sentiments[0]['label'] == 'POSITIVE' and predictions[-1] > y_test[-1]:
-    st.write("Strong Buy Recommendation for", ticker)
-else:
-    st.write("No Strong Buy Recommendation for", ticker)
+        # Reshape data for LSTM
+        X_train = np.reshape(X_train, (X_train.shape[0], X_train.shape[1], 1))
+        X_test = np.reshape(X_test, (X_test.shape[0], X_test.shape[1], 1))
+
+        # Build and train the LSTM model
+        model = build_and_train_model(X_train, y_train)
+
+        # Make predictions
+        predictions = model.predict(X_test)
+        predictions = scaler.inverse_transform(predictions)
+        y_test = scaler.inverse_transform(y_test)
+
+        # ... (rest of your code for plotting and analysis)
+
+        # Calculate accuracy metrics
+        mse = mean_squared_error(y_test, predictions)
+        mae = mean_absolute_error(y_test, predictions)
+        r2 = r2_score(y_test, predictions)
+        st.write("Accuracy Metrics:")
+        st.write(f"Mean Squared Error (MSE): {mse}")
+        st.write(f"Mean Absolute Error (MAE): {mae}")
+        st.write(f"R-Squared (R2): {r2}")
+        # Calculate and print accuracy (R-squared is a common measure of accuracy)
+        accuracy = r2_score(y_test, predictions)
+        st.write(f"Model Accuracy (R-squared): {accuracy}")
+
+        # Make a recommendation based on the analysis (example)
+        if predictions[-1][0] > historical_data['Close'].iloc[-1].any():
+            recommendation = "BUY"
+        else:
+            recommendation = "SELL"
+        st.write(f"Recommendation: {recommendation}")
