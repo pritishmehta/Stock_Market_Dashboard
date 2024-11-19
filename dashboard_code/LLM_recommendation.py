@@ -44,7 +44,7 @@ def get_stock_data(ticker, period="5y"):
         return None
 
 if __name__ == "__main__":
-    ticker_symbol = input("Enter the stock ticker symbol: ")
+    ticker_symbol = st.text_input("Enter the stock ticker symbol: ")
     stock_info = get_stock_data(ticker_symbol)
 
     if stock_info:
